@@ -50,7 +50,7 @@ public class EditorApi {
     @PostMapping("/dotSuggest/")
     public DotSuggestionAnswer dot(@RequestBody DotSuggestionRequest request ) {
 
-        // Я внес некоторое изменение тут и сделал коммит в дополнительную ветку
+
 
         return new DotSuggestionAnswer(parserService.methodSuggestions(request));
     }
