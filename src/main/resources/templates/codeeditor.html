@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Editor</title>
+    <style>
+        /* Full-height layout */
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Editor container */
+        #editor-container {
+            flex: 1; /* Takes up most of the screen */
+            height: 60%; /* Adjust based on your needs */
+            overflow: hidden;
+        }
+
+        /* Console container */
+        #console-container {
+            height: 20%; /* Fixed height for the console */
+            background-color: #2d2d2d;
+            color: white;
+            font-family: monospace;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        /* Run button */
+        #run-button {
+            width: 100%;
+            height: 10%; /* Fixed height for the button */
+            background-color: #007bff;
+            color: white;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Responsive layout */
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+
+    </style>
+</head>
+<body>
+
+
+<div class="container">
+    <!-- Editor -->
+    <div id="editor-container"></div>
+
+    <!-- Run Button -->
+    <button id="run-button">Run</button>
+
+    <!-- Console Output -->
+    <div id="console-container"></div>
+</div>
+
+<!-- Load Monaco Editor from CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.min.js"></script>
+<script src="/codejs/codepage.js">
+
+
+</script>
+</body>
+</html>
