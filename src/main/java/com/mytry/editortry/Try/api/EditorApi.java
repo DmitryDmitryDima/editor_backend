@@ -1,9 +1,15 @@
 package com.mytry.editortry.Try.api;
 
 
-import com.mytry.editortry.Try.dto.*;
+
+import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
+import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
+import com.mytry.editortry.Try.dto.run.RunAnswer;
+import com.mytry.editortry.Try.dto.run.RunRequest;
 import com.mytry.editortry.Try.service.CompilerService;
-import com.mytry.editortry.Try.service.LanguageModelService;
+import com.mytry.editortry.Try.service.AIService;
 import com.mytry.editortry.Try.service.ParserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,34 +17,38 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-import java.util.Set;
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/editor/")
 public class EditorApi {
 
+
+    // сервис, отвечающий за все, связанное с запуском кода
     @Autowired
     private CompilerService compilerService;
 
+    // сервис, отвечающий за все, относящееся к различного рода подсказкам
     @Autowired
     private ParserService parserService;
 
+    // сервис, отвечающий за общение с нейросетью/нейросетями
     @Autowired
-    private LanguageModelService languageModelService;
+    private AIService AIService;
 
 
 
-    // компиляция
+
+
+
+
+    // запуск кода - его компиляция + вывод в консоль результата (в перспективе - динамичен)
     @PostMapping("/run/")
     public RunAnswer run(@RequestBody RunRequest request) throws Exception {
 
 
-        String info = request.getInfo();
-
-
-        System.out.println(languageModelService.sendARequest(LanguageModelService.IMPORT_PROMPT + info).importOptimize());
-
+        String info = request.getCode();
 
         return new RunAnswer(compilerService.makeCompilation(info));
     }
@@ -46,30 +56,44 @@ public class EditorApi {
 
 
 
-    // предложки
-    @PostMapping("/dotSuggest/")
+    // запрос происходит при нажатии кнопки импорта - происходит обращение к нейросети
+
+    @PostMapping("/import/")
+    public ImportAnswer suggestImport(@RequestBody ImportRequest importRequest){
+
+       // обращение к ai сервису
+
+       return null;
+    }
+
+
+
+
+
+
+
+    // фронтенд фиксирует событие и посылает запрос на анализ - поставлена точка
+    @PostMapping("/suggest/dot/")
     public DotSuggestionAnswer dot(@RequestBody DotSuggestionRequest request ) {
 
+        List<String> methods = parserService.methodSuggestions(request);
 
-        //
-        return new DotSuggestionAnswer(parserService.methodSuggestions(request));
+        return new DotSuggestionAnswer(null, null);
+    }
+
+
+    // фронтенд фиксирует событие и посылает запрос на анализ - пользователь начал что-то писать
+    @PostMapping("/suggest/word/")
+    public void word(){
+        //TODO тут мы обращаемся к парсеру, загружаем доступные в коде имена переменных, совпадающие с уже введенной частью
+        // возможно сделать что-то вроде кеша
     }
 
 
 
-    // предложка импорта - обращение к нейросети (gemma3 or qwen coder)
-    // т.к. нейросеть нестабильна в своих ответах, необходимо реализовать возможность делать ctrl Z
-    @PostMapping("/import/")
-    public ImportAnswer suggestImport(@RequestBody Map<String, String> request){
-
-        String code = request.get("code");
 
 
-        Set<String> importAnswer = languageModelService
-                .sendARequest(LanguageModelService.IMPORT_PROMPT+code).importOptimize();
 
-        return new ImportAnswer(importAnswer);
-    }
 
 
 

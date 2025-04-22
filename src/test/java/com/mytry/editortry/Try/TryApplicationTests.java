@@ -1,8 +1,8 @@
 package com.mytry.editortry.Try;
 
-import com.mytry.editortry.Try.dto.LMResponse;
+import com.mytry.editortry.Try.dto.lm.LMResponse;
 import com.mytry.editortry.Try.service.CompilerService;
-import com.mytry.editortry.Try.service.LanguageModelService;
+import com.mytry.editortry.Try.service.AIService;
 import com.mytry.editortry.Try.service.ParserService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -20,7 +20,7 @@ class TryApplicationTests {
 	private ParserService parserService;
 
 	@Autowired
-	private LanguageModelService languageModelService;
+	private AIService AIService;
 
 
 	@Test
@@ -73,7 +73,7 @@ class TryApplicationTests {
 					""";
 
 
-			LMResponse answer = languageModelService.sendARequest(LanguageModelService.IMPORT_PROMPT+code);
+			LMResponse answer = AIService.sendARequest(AIService.IMPORT_PROMPT+code);
 			System.out.println(answer);
 		});
 	}

@@ -1,31 +1,30 @@
-package com.mytry.editortry.Try.dto;
+package com.mytry.editortry.Try.dto.dotsuggestion;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@ToString
+@Value
 public class DotSuggestionRequest {
 
     // контекст
-    private String code;
-    // объект
-    private String object;
+    String code;
+
+    // объект, после которого поставлена точка
+    String object;
+
+    // позиция курсора
+    Integer position;
+
+    // линия (пока не нужна)
+    String line;
 
 
-    private Integer absolute;
-
-    private String line;
 
 
 
 
-
+    // TODO все манипуляции ниже нужно вынести в отдельный класс категории utils (parser utils), метод которого
+    //  будет принимать готовый DTO
 
     // зная код, идущий до точки, а также позицию курсора, мы можем, к примеру, закомментить переменную
     // если точка ставится после метода, мы добавляем ;
@@ -35,7 +34,7 @@ public class DotSuggestionRequest {
 
 
 
-        int index = absolute;
+        int index = position;
 
         // дальше в зависимости от типа случая ....
 
