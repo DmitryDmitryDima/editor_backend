@@ -8,8 +8,12 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ParserUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger(ParserUtils.class);
 
 
 

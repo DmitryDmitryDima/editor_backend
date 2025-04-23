@@ -11,6 +11,8 @@ import com.mytry.editortry.Try.dto.run.RunRequest;
 import com.mytry.editortry.Try.service.CompilerService;
 import com.mytry.editortry.Try.service.AIService;
 import com.mytry.editortry.Try.service.ParserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,6 +25,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/editor/")
 public class EditorApi {
+
+    private static final Logger logger = LoggerFactory.getLogger(EditorApi.class);
 
 
     // сервис, отвечающий за все, связанное с запуском кода
@@ -48,9 +52,9 @@ public class EditorApi {
     public RunAnswer run(@RequestBody RunRequest request) throws Exception {
 
 
-        String info = request.getCode();
 
-        return new RunAnswer(compilerService.makeCompilationAndRun(info));
+
+        return new RunAnswer(compilerService.makeCompilationAndRun(request));
     }
 
 

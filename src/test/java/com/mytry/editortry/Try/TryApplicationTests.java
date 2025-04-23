@@ -1,9 +1,11 @@
 package com.mytry.editortry.Try;
 
 import com.mytry.editortry.Try.dto.lm.LMResponse;
+import com.mytry.editortry.Try.dto.run.RunRequest;
 import com.mytry.editortry.Try.service.CompilerService;
 import com.mytry.editortry.Try.service.AIService;
 import com.mytry.editortry.Try.service.ParserService;
+import com.mytry.editortry.Try.utils.ai.Prompts;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +22,7 @@ class TryApplicationTests {
 	private ParserService parserService;
 
 	@Autowired
-	private AIService AIService;
+	private AIService aiService;
 
 
 	@Test
@@ -29,7 +31,7 @@ class TryApplicationTests {
 
 		Assertions.assertDoesNotThrow(()->{
 			String c = "class Main{}";
-			String answer = compilerService.makeCompilationAndRun(c);
+			String answer = compilerService.makeCompilationAndRun(new RunRequest(c));
 			System.out.println(answer);
 		});
 	}
@@ -37,6 +39,12 @@ class TryApplicationTests {
 	@Test
 	public void testParser(){
 
+	}
+
+	@Test
+	public void testValueAnnotation(){
+		Assertions.assertEquals(aiService.getAPI_ADDRESS(), "http://127.0.0.1:11434/api/generate");
+		Assertions.assertEquals(aiService.getMODEL_NAME(), "gemma3:1b");
 	}
 
 
@@ -76,8 +84,8 @@ class TryApplicationTests {
 					""";
 
 
-			LMResponse answer = AIService.sendARequest(AIService.IMPORT_PROMPT+code);
-			System.out.println(answer);
+			//LMResponse answer = AIService.sendARequest(Prompts.IMPORT_PROMPT +code);
+			//System.out.println(answer);
 		});
 	}
 

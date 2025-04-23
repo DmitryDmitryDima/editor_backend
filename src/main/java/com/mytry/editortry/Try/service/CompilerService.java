@@ -1,5 +1,8 @@
 package com.mytry.editortry.Try.service;
 
+import com.mytry.editortry.Try.dto.run.RunRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.tools.JavaCompiler;
@@ -23,6 +26,8 @@ import java.nio.file.Path;
 @Service
 public class CompilerService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CompilerService.class);
+
     // компилятор
     private final JavaCompiler compiler;
 
@@ -38,8 +43,9 @@ public class CompilerService {
 
 
     // компиляция и запуск с использованием временного файла
-    public String makeCompilationAndRun(String code) throws Exception{
+    public String makeCompilationAndRun(RunRequest request) throws Exception{
 
+        String code = request.getCode();
         Path tempDir = null;
         String filename = "Main.java";
 

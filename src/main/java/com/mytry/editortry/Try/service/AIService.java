@@ -3,6 +3,9 @@ package com.mytry.editortry.Try.service;
 
 import com.mytry.editortry.Try.dto.lm.LMRequestWithPrompt;
 import com.mytry.editortry.Try.dto.lm.LMResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -27,18 +30,19 @@ TODO некоторые параметры целесообразно вынес
 @Service
 public class AIService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AIService.class);
+
+
+
     //адрес api нейросети
-    public static final String API_ADDRESS = "http://127.0.0.1:11434/api/generate";
+    @Value("${ai.api.address}")
+    private String API_ADDRESS;
+
+
 
     // текущая модель
-    public static final String MODEL_NAME = "gemma3:1b"; // lightweight - gemma3:1b
-
-    // prompt - оптимальный, протестированный текст запроса для цели извлечь импорт
-    public static final String IMPORT_PROMPT = """ 
-
-        write only imports for java code below:
-
-""";
+    @Value("${ai.model.name}")
+    private String MODEL_NAME = "gemma3:1b"; // lightweight - gemma3:1b
 
 
 
@@ -46,7 +50,21 @@ public class AIService {
 
 
 
-    // utils
+
+    public String getAPI_ADDRESS() {
+        return API_ADDRESS;
+    }
+
+    public String getMODEL_NAME() {
+        return MODEL_NAME;
+    }
+
+
+
+
+
+
+
 
 
 

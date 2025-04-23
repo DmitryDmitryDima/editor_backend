@@ -13,6 +13,8 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeS
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.utils.parser.ParserUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -24,6 +26,9 @@ import java.util.Map;
 
 @Service
 public class ParserService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ParserService.class);
+
 
     // код, относящийся к анализу и парсингу
     private final ParserUtils parserUtils;
@@ -39,7 +44,7 @@ public class ParserService {
             return parseAndSuggest(request);
         }
         catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
             // возвращаем пустой json
             return new DotSuggestionAnswer(new ArrayList<>(), new ArrayList<>());
         }
