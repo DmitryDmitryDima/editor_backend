@@ -14,141 +14,202 @@ import java.nio.file.Path;
 
 Сервис, отвечающий за запуск кода, с получением результата для дальнейшего вывода в консоль
 
+!!! На данный момент работает, создавая временный файл - в дальнейшем будет читать пользовательский файл
+Также отсутствует поддержка длительных операций
+
+!!! Также ограничением является то, что посылаемый код должен быть внутри класса с именем Main
+
  */
 @Service
 public class CompilerService {
 
-
+    // компилятор
     private final JavaCompiler compiler;
+
+    // время (в секундах), которое дается на выполнение клиентского кода.
+    // Если код не выполняется, выбрасывается ошибка (пока что избегаем бесконечных лупов)
     public static final int TIMEOUT = 5; // SECONDS
+
+
 
     public CompilerService(){
         compiler = ToolProvider.getSystemJavaCompiler();
     }
 
-    /*
 
-    в начале будет создаваться временная директория, однако после за каждым юзером будет закреплена файловая система
-
-     */
-    public String makeCompilation(String code) throws Exception{
+    // компиляция и запуск с использованием временного файла
+    public String makeCompilationAndRun(String code) throws Exception{
 
         Path tempDir = null;
+        String filename = "Main.java";
 
         try {
 
-            // пишем код во временный java file
-            tempDir = Files.createTempDirectory("java-code-execution");
-            File sourceFile =new File(tempDir.toFile(), "Main.java");
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(sourceFile))) {
+            // --- Фаза компиляции
+
+            /*
+             пишем код во временный java file
+             используем безопасную конструкцию try-with-resources
+            */
+            tempDir = Files.createTempDirectory("java-code-execution"); // создание директории в ../AppData/Local/Temp/
+            File sourceFile =new File(tempDir.toFile(), filename); // Создание пустого файла с именем filename
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(sourceFile))) { // пишем код во временный файл
                 writer.write(code);
             }
 
-            // компилируем код с помощью compiler и в случае ошибки возвращаем ошибку
+
+
+            // получаем полный путь к созданному временному файлу
             String absPath = sourceFile.getAbsolutePath();
 
 
-            // тут мы можем узнать конкретную причину, почему компиляция провалилась
+
+            /* готовим два байт потока - в первый записывается инфа от компилятора в случае успеха
+            во второй - лог ошибки
+             */
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
+            // запускаем компиляцию
             int result = compiler.run(null, outputStream, errorStream, absPath);
 
 
-
+            // если компиляция закончилась с ошибкой - возвращаем ее лог
             if (result!=0) return errorStream.toString();
 
-            // в случае успешной компиляции запускаем байт код и ловим потенциальный runtime error
-            // Ставим лимит на выполнение операции
-            // Внимание на имя класса - оно должно совпадать!!!
+
+
+            /*
+
+            ---- После компиляции готовимся запускать код
+
+             */
 
 
 
+            /*
+            создаем новую команду для операционной системы. В конструкторе - название команды и ее аргументы
+            - java - команда JVM
+            - -cp - classpath флаг, указывающий где искать скомпилированные классы
+            - tempDir.toString() - временная директория, куда мы ранее скомпилировали класс
+            - название класса, содержащего main() метод
+             */
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "java", "-cp", tempDir.toString(), "Main"
             );
 
 
-            //
 
-            processBuilder.redirectErrorStream(false); // Keep stderr separate from stdout
+            // делаем так, чтобы лог ошибки уходил в отдельный поток
+            processBuilder.redirectErrorStream(false);
 
             Process process = processBuilder.start();
 
-            // Capture stdout and stderr in separate threads
-            ByteArrayOutputStream runtimeOutput = new ByteArrayOutputStream();
-            ByteArrayOutputStream runtimeError = new ByteArrayOutputStream();
+            // готовим два отдельных потока записи для результата выполнения и runtime ошибок
+            ByteArrayOutputStream runtimeOutputStream = new ByteArrayOutputStream();
+            ByteArrayOutputStream runtimeErrorStream = new ByteArrayOutputStream();
 
+            // готовим потоки выполнения
+
+            // поток обработки успешно выполненного кода
             Thread outputThread = new Thread(() -> {
                 try {
                     byte[] buffer = new byte[1024];
                     int bytesRead;
                     while ((bytesRead = process.getInputStream().read(buffer)) != -1) {
-                        runtimeOutput.write(buffer, 0, bytesRead);
-                        // System.out.println(runtimeOutput); // вот тут можно реализовать websocket связь
+                        runtimeOutputStream.write(buffer, 0, bytesRead);
+                        /*
+                        todo на будущее - читая runtimeOutputStream, можно посылать сообщения последовательно, к примеру через websocket
+                         */
+
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
 
+
+            // поток обработки ошибки
             Thread errorThread = new Thread(() -> {
                 try {
                     byte[] buffer = new byte[1024];
                     int bytesRead;
                     while ((bytesRead = process.getErrorStream().read(buffer)) != -1) {
-                        runtimeError.write(buffer, 0, bytesRead);
+                        runtimeErrorStream.write(buffer, 0, bytesRead);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             });
 
+
+            // запускаем потоки и, тем самым, начинаем запись логов
             outputThread.start();
             errorThread.start();
 
-            // Wait for the process to complete with a timeout
+            // ждем выполнения процесса, опираясь на заданный параметр времени
             boolean finished = process.waitFor(TIMEOUT, java.util.concurrent.TimeUnit.SECONDS); // 5-second timeout
+
+
+            /*
+            если спустя заданное время процесс не был закончен, принудительно его заканчиваем
+            возвращаем то, что успело залететь в лог
+             */
             if (!finished) {
                 process.destroy(); // Terminate the process
 
                 // тут я присоединяю все то, что попало в консоль до ошибки
-                return runtimeOutput+  "\n Execution timed out after 5 seconds.";
+                return runtimeOutputStream+  "\n Execution timed out after 5 seconds.";
             }
 
-            // Check the exit code
+
+            /*
+            далее делаем проверку - какой код вернул процесс
+            В зависимости от значения понимаем, была ли ошибка
+             */
+
+            // Проверяем
             int exitCode = process.exitValue();
+
+
+            // выполнение программы закончилось с ошибкой
             if (exitCode != 0) {
-                // Join threads to ensure all output is captured
+
+                // main thread ждет окончания выполнения вспомогательных потоков
                 outputThread.join();
                 errorThread.join();
 
-                // Return the error message
-                String errorMessage = runtimeError.toString();
+                // возвращаем ошибку todo  добавь лог программы из runtimeoutputStream, если есть
+                String errorMessage = runtimeErrorStream.toString();
                 if (errorMessage.isEmpty()) {
                     errorMessage = "Execution failed with exit code: " + exitCode;
                 }
                 return "Execution failed:\n" + errorMessage;
             }
 
-            // Join threads to ensure all output is captured
+
+            // выполнение программы успешно - возвращаем результат, не забыв заджоинить потоки
+
             outputThread.join();
             errorThread.join();
 
 
-            return runtimeOutput.toString();
+            return runtimeOutputStream.toString();
 
 
 
 
         }
 
+        // если при компиляции или запуске произошла какая-то непредвиденная ошибка
         catch (Exception e) {
             return "Error "+e.getMessage();
         }
 
+
+        // рекурсивно чистим временное хранилище - в независимости от результата выполнения
         finally {
-            // чистим временное хранилище
+
 
             if (tempDir != null) {
                 try {

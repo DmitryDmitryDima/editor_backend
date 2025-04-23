@@ -12,7 +12,9 @@ import java.util.List;
  */
 
 
-@Value
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class DotSuggestionAnswer {
 
     // методы - в будущем можно разделить на публичные и не очень

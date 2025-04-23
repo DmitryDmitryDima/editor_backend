@@ -44,13 +44,13 @@ public class EditorApi {
 
 
     // запуск кода - его компиляция + вывод в консоль результата (в перспективе - динамичен)
-    @PostMapping("/run/")
+    @PostMapping("/run")
     public RunAnswer run(@RequestBody RunRequest request) throws Exception {
 
 
         String info = request.getCode();
 
-        return new RunAnswer(compilerService.makeCompilation(info));
+        return new RunAnswer(compilerService.makeCompilationAndRun(info));
     }
 
 
@@ -58,7 +58,7 @@ public class EditorApi {
 
     // запрос происходит при нажатии кнопки импорта - происходит обращение к нейросети
 
-    @PostMapping("/import/")
+    @PostMapping("/suggest/import")
     public ImportAnswer suggestImport(@RequestBody ImportRequest importRequest){
 
        // обращение к ai сервису
@@ -73,17 +73,15 @@ public class EditorApi {
 
 
     // фронтенд фиксирует событие и посылает запрос на анализ - поставлена точка
-    @PostMapping("/suggest/dot/")
+    @PostMapping("/suggest/dot")
     public DotSuggestionAnswer dot(@RequestBody DotSuggestionRequest request ) {
 
-        List<String> methods = parserService.methodSuggestions(request);
-
-        return new DotSuggestionAnswer(null, null);
+        return parserService.dotSuggestion(request);
     }
 
 
     // фронтенд фиксирует событие и посылает запрос на анализ - пользователь начал что-то писать
-    @PostMapping("/suggest/word/")
+    @PostMapping("/suggest/word")
     public void word(){
         //TODO тут мы обращаемся к парсеру, загружаем доступные в коде имена переменных, совпадающие с уже введенной частью
         // возможно сделать что-то вроде кеша

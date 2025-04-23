@@ -28,8 +28,8 @@ class TryApplicationTests {
 
 
 		Assertions.assertDoesNotThrow(()->{
-			String c = "class X{}";
-			String answer = compilerService.makeCompilation(c);
+			String c = "class Main{}";
+			String answer = compilerService.makeCompilationAndRun(c);
 			System.out.println(answer);
 		});
 	}
@@ -38,6 +38,9 @@ class TryApplicationTests {
 	public void testParser(){
 
 	}
+
+
+
 
 	@Test
 	public void testLM(){
