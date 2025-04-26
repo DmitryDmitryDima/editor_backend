@@ -24,6 +24,7 @@ public class ParserUtils {
         combinedTypeSolver.add(new ReflectionTypeSolver());
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(combinedTypeSolver);
         StaticJavaParser.getParserConfiguration().setSymbolResolver(symbolSolver);
+
     }
 
 
@@ -67,7 +68,7 @@ public class ParserUtils {
         DotSuggestionAnswer dotSuggestionAnswer = new DotSuggestionAnswer();
 
         // создаем объект обхода спарсенного кода ля поиска нужного объекта
-        DotSuggestionCollector dotSuggestionCollector = new DotSuggestionCollector(request.getObject());
+        DotSuggestionCollector dotSuggestionCollector = new DotSuggestionCollector(request);
 
         dotSuggestionCollector.visit(c, dotSuggestionAnswer);
 

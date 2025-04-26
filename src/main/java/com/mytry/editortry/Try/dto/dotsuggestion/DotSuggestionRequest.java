@@ -16,7 +16,7 @@ public class DotSuggestionRequest {
     Integer position;
 
     // линия (пока не нужна)
-    String line;
+    Integer line;
 
 
 
