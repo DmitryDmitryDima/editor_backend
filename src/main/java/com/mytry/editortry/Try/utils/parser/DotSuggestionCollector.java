@@ -56,6 +56,7 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
         int objLine = objectRange.get().begin.line;
 
         long count = variableDeclaration.findRootNode().getChildNodes().stream().filter(node -> {
+
             Optional<Range> range = node.getRange();
             if (range.isEmpty()) return false;
             else {
@@ -98,6 +99,7 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
 
 
 
+
         // рассматриваем сценарии с массивом и ссылкой
         try {
             if(resolvedType.isArray()){
@@ -107,9 +109,10 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
             }
 
             else {
-                // извлекаем методы
+                // извлекаем методы todo подумай, как можно было бы их отсортировать в порядке ребенок - родитель
                 resolvedType.asReferenceType().getAllMethods()
-                        .stream().filter(m -> m.accessSpecifier().asString().equals("public")
+                        .stream().filter(m ->
+                                m.accessSpecifier().asString().equals("public")
                                 ||
                                 (m.accessSpecifier().asString().isEmpty() && !resolvedTypeName.contains(".")))
                         .map(ResolvedDeclaration::getName).distinct()
@@ -122,7 +125,7 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
 
         }
         catch (Exception e){
-            e.printStackTrace();
+            logger.error(e.getMessage());
 
         }
         answer.setMethods(methods);

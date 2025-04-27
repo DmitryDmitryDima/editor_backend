@@ -9,7 +9,7 @@ public class DotSuggestionRequest {
     // контекст
     String code;
 
-    // объект, после которого поставлена точка
+    // объект (или метод), после которого поставлена точка
     String object;
 
     // позиция курсора
@@ -17,6 +17,7 @@ public class DotSuggestionRequest {
 
     // линия (пока не нужна)
     Integer line;
+
 
 
 
