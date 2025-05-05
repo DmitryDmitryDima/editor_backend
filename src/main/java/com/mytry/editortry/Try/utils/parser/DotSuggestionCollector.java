@@ -29,8 +29,8 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
     // строка, где вызван метод
     private final int line;
 
-    public DotSuggestionCollector(DotSuggestionRequest request){
-        this.objName = request.getObject();
+    public DotSuggestionCollector(String object, DotSuggestionRequest request){
+        this.objName = object;
         this.line = request.getLine();
     }
 

@@ -18,7 +18,7 @@ public class UtilsTest {
 
     @Test
     public void testAST(){
-        String expression = "a().hello()";
+        String expression = "x";
 
 
         Expression parsedEx = StaticJavaParser.parseExpression(expression);

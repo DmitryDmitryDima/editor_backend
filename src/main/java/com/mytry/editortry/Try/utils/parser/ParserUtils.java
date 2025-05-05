@@ -3,6 +3,9 @@ package com.mytry.editortry.Try.utils.parser;
 
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
@@ -17,6 +20,75 @@ public class ParserUtils {
 
 
 
+
+
+
+
+
+    public DotSuggestionAnswer dotParsing(DotSuggestionRequest request) {
+
+        // анализируем строку
+
+
+        Expression parsedEx = StaticJavaParser.parseExpression(request.getExpression());
+
+        // сценарий точки после единичной переменной
+        if (parsedEx.isNameExpr()){
+
+            try {
+                return dotParsingVariable(parsedEx.asNameExpr(), request);
+            }
+            catch (Exception e){
+                return new DotSuggestionAnswer();
+            }
+
+
+        }
+        // сценарий вызова метода
+        else if (parsedEx.isMethodCallExpr()){
+            // todo missed logic
+            return new DotSuggestionAnswer();
+        }
+
+        // тут может быть список дефолтных методов - в случаях выше можно делать merge
+        else {
+            return new DotSuggestionAnswer();
+        }
+
+
+    }
+
+
+
+
+
+
+
+
+
+
+    // зная код, идущий до точки, а также позицию курсора, мы можем, к примеру, закомментить переменную
+    // если точка ставится после метода, мы добавляем ;
+    private String makeCodeCompleteDotVariable(String object, DotSuggestionRequest request){
+
+
+
+
+        int index = request.getPosition();
+
+        // дальше в зависимости от типа случая, стоит скобка или нет ....
+
+        // Реализация для переменной - курсор стоит после точки, а точка после имени переменной - длина объекта плюс точки
+        int objectLength = object.length()+1;
+
+
+        return request.getCode().substring(0, index - objectLength) + "//" +
+                request.getCode().substring(index - objectLength);
+    }
+
+
+
+
     // конфигурируем парсер (пока не ясно, можно ли сделать эо один раз)
     private void prepareParserConfigForDotSuggestion(){
         // Конфигурация парсера
@@ -27,61 +99,34 @@ public class ParserUtils {
 
     }
 
+    // анализируем ситуацию, когда точка ставится после переменной
+    private DotSuggestionAnswer dotParsingVariable(NameExpr parsedExpression, DotSuggestionRequest request) throws Exception{
 
-    // зная код, идущий до точки, а также позицию курсора, мы можем, к примеру, закомментить переменную
-    // если точка ставится после метода, мы добавляем ;
-    private String makeCodeComplete(DotSuggestionRequest request){
+        // извлекаем имя объекта
+        String object = parsedExpression.getName().asString();
 
-
-
-
-        int index = request.getPosition();
-
-        // дальше в зависимости от типа случая, стоит скобка или нет ....
-
-        // Реализация для переменной - курсор стоит после точки, а точка после имени переменной - длина объекта плюс точки
-        int objectLength = request.getObject().length()+1;
-        String editedCode = request.getCode().substring(0, index - objectLength) + "//" +
-                request.getCode().substring(index - objectLength);
-
-
-
-
-
-        return editedCode;
-    }
-
-
-
-    /*
-    todo
-     - в начале анализируется expression (см тесты)
-     - После анализа понимаем, вызов из переменной или из метода - дополняем код для проведения анализа контекста
-     - для обхода придется создать отдельный тип данных, с именем объекта (вытаскивается из шага 1) - FromMethod / FromVariable
-     - несколько методов makeCodeComplete - работает с разными сценариями. Обход, соответственно, тоже разный.
-     */
-    public DotSuggestionAnswer dotParsing(DotSuggestionRequest request){
-        // сначала нужно попытаться отредактировать код так, чтобы он был корректным для парсера
-
-        String completedCode = makeCodeComplete(request);
+        // редактируем код - ставим комментарий (пока что для всей линии)
+        String editedContext = makeCodeCompleteDotVariable(object, request);
 
         // конфигурируем
         prepareParserConfigForDotSuggestion();
 
         // парсим
-        CompilationUnit c = StaticJavaParser.parse(completedCode);
+        CompilationUnit c = StaticJavaParser.parse(editedContext);
 
         DotSuggestionAnswer dotSuggestionAnswer = new DotSuggestionAnswer();
 
         // создаем объект обхода спарсенного кода ля поиска нужного объекта
-        DotSuggestionCollector dotSuggestionCollector = new DotSuggestionCollector(request);
+        DotSuggestionCollector dotSuggestionCollector = new DotSuggestionCollector(object, request);
 
         dotSuggestionCollector.visit(c, dotSuggestionAnswer);
 
         return dotSuggestionAnswer;
 
-
-
     }
+
+
+
+
 
 }
