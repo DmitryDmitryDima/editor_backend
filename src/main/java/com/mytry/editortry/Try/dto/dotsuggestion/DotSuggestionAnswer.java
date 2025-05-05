@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.Value;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /*
@@ -22,6 +23,8 @@ public class DotSuggestionAnswer {
 
     // поля
     List<String> fields;
+
+
 
 
 

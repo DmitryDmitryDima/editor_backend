@@ -1,13 +1,16 @@
 package com.mytry.editortry.Try.utils.parser;
 
 
+import com.github.javaparser.Position;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.JavaParserTypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
@@ -30,7 +33,10 @@ public class ParserUtils {
         // анализируем строку
 
 
+
+
         Expression parsedEx = StaticJavaParser.parseExpression(request.getExpression());
+        logger.info(parsedEx.toString()+ " parsed ex");
 
         // сценарий точки после единичной переменной
         if (parsedEx.isNameExpr()){
@@ -39,6 +45,7 @@ public class ParserUtils {
                 return dotParsingVariable(parsedEx.asNameExpr(), request);
             }
             catch (Exception e){
+                e.printStackTrace();
                 return new DotSuggestionAnswer();
             }
 
@@ -67,8 +74,10 @@ public class ParserUtils {
 
 
 
-    // зная код, идущий до точки, а также позицию курсора, мы можем, к примеру, закомментить переменную
-    // если точка ставится после метода, мы добавляем ;
+
+    /*
+    использую заглушку ._ - таким образом я не сломаю контекст.
+     */
     private String makeCodeCompleteDotVariable(String object, DotSuggestionRequest request){
 
 
@@ -82,8 +91,8 @@ public class ParserUtils {
         int objectLength = object.length()+1;
 
 
-        return request.getCode().substring(0, index - objectLength) + "//" +
-                request.getCode().substring(index - objectLength);
+        return request.getCode().substring(0, index)+"dummy;"+request.getCode().substring(index+1);
+
     }
 
 
@@ -108,11 +117,20 @@ public class ParserUtils {
         // редактируем код - ставим комментарий (пока что для всей линии)
         String editedContext = makeCodeCompleteDotVariable(object, request);
 
-        // конфигурируем
+
+        // конфигурируем todo вынеси в статик - наверно так логичнее
         prepareParserConfigForDotSuggestion();
 
         // парсим
         CompilationUnit c = StaticJavaParser.parse(editedContext);
+
+        //todo тест альтернативного подхода
+
+        Position position = new Position(request.getLine(), request.getColumn()-1);
+
+
+
+
 
         DotSuggestionAnswer dotSuggestionAnswer = new DotSuggestionAnswer();
 

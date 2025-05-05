@@ -26,6 +26,7 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
     // имя объекта
     private final String objName;
 
+
     // строка, где вызван метод
     private final int line;
 
@@ -44,30 +45,38 @@ public class DotSuggestionCollector extends VoidVisitorAdapter<DotSuggestionAnsw
 
 
         /*
-        суть алгоритма - мы знаем позицию объекта по его имени, позицию курсора, а также список диапазонов (контекстов)
-        Мы проверяем, входит ли позиция курсора и позиция объекта хотя бы в один из контекстов.
+        Суть алгоритма - мы рассматриваем объект, добираясь до его первой "диапазонной" ноды.
+        Далее смотрим, входит ли позиция курсора юзера (сравниваем линии) в этот диапазон
+
+        Хз, какие могут быть ситуации, поэтому пока поставлю "глубину" прохожения
          */
 
+        if (variableDeclaration.getParentNode().isEmpty()) return false;
+        Node parent = variableDeclaration.getParentNode().get();
 
-        Optional<Range> objectRange = variableDeclaration.getRange();
 
-        if (objectRange.isEmpty()) return false;
+        int depth= 0;
+        while(depth<10){
+            int beginLine = parent.getRange().get().begin.line;
+            int endLine = parent.getRange().get().end.line;
 
-        int objLine = objectRange.get().begin.line;
-
-        long count = variableDeclaration.findRootNode().getChildNodes().stream().filter(node -> {
-
-            Optional<Range> range = node.getRange();
-            if (range.isEmpty()) return false;
-            else {
-                int begin = range.get().begin.line;
-                int end = range.get().end.line;
-
-                return (begin<=objLine && end>=objLine) && (begin<=line && end >= line);
+            if (beginLine!=endLine){
+                break;
             }
-        }).count();
+            else {
+                if (parent.getParentNode().isEmpty()) return false;
+                else {
+                    parent = parent.getParentNode().get();
+                    depth++;
+                }
+            }
+        }
 
-        return count>0;
+        Range range = parent.getRange().get();
+
+        return range.begin.line<=line && range.end.line>=line;
+
+
     }
 
     @Override

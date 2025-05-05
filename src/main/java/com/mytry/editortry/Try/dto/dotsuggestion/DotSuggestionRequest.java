@@ -19,6 +19,8 @@ public class DotSuggestionRequest {
 
     // номер строки
     int line;
+    // номер столбика - пока для теста
+    int column;
 
 
 }
