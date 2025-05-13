@@ -16,6 +16,7 @@ import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NameExpr;
+import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
@@ -65,6 +66,44 @@ public class ParserUtils {
             prepareParserConfigForDotSuggestion();
             // парсим
             CompilationUnit c = StaticJavaParser.parse(s);
+
+
+
+            // тестируем возможности определения типов, не импортированных ранее
+            // суть алгоритма заключается в том, что мы проверяем существование класса с помощью рефлексии
+            // это работает для внутренних java классов, для классов, внешних по отношению к проекту, мы должны загрузить свой resolver
+            List<String> languagePackages = List.of(
+
+                    "java.util", "java.io", "java.lang.reflect",
+                    "java.time", "java.math", "java.nio"
+            );
+
+            c.findAll(ClassOrInterfaceType.class).forEach(el->{
+                try {
+                    System.out.println(el.getNameAsString());
+                    System.out.println(el.resolve().describe());
+                }
+                catch (Exception e){
+                    //e.printStackTrace();
+                    for (String p:languagePackages){
+                        String fullName = p+"."+el.getNameAsString();
+
+                        try {
+
+                            System.out.println(Class.forName(fullName).getPackageName());
+                            break;
+
+                        } catch (ClassNotFoundException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                }
+            });
+
+
+
+
+
             // извлекаем выражения, соответствующие позиции user
             List<FieldAccessExpr> fieldAccessExprs = c.findAll(FieldAccessExpr.class)
                     .stream().filter(exp->{
