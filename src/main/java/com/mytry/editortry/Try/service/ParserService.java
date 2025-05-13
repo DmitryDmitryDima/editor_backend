@@ -37,27 +37,20 @@ public class ParserService {
         parserUtils = new ParserUtils();
     }
 
+
+    // сценарий поставленной точки
+
     public DotSuggestionAnswer dotSuggestion(DotSuggestionRequest request){
 
 
-        try {
-
-            return parseAndSuggest(request);
-        }
-        catch (Exception e){
-            logger.error(e.getMessage());
-            // возвращаем пустой json
-            return new DotSuggestionAnswer(new ArrayList<>(), new ArrayList<>());
-        }
-
-
-    }
-
-    // todo для этого метода можно использовать overloading - выполняемый метод будет определяться в зависимости от вида запроса
-    private DotSuggestionAnswer parseAndSuggest(DotSuggestionRequest request) throws Exception {
-
         return parserUtils.dotParsing(request);
+
+
     }
+
+    //
+
+
 
 
 
