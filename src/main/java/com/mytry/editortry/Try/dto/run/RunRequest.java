@@ -10,6 +10,7 @@ import lombok.*;
 public class RunRequest {
 
     String code;
+    Integer screenWidth;
 
 
 }

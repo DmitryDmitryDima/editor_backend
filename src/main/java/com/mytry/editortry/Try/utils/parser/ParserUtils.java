@@ -62,7 +62,7 @@ public class ParserUtils {
 
             c.findAll(ClassOrInterfaceType.class).forEach(el->{
                 try {
-                    //System.out.println(el.getNameAsString());
+                    System.out.println(el.getNameAsString() +" name candidate for import");
                     el.resolve().describe();
                 }
                 catch (Exception e){
@@ -112,8 +112,10 @@ public class ParserUtils {
 
         DotSuggestionAnswer dotSuggestionAnswer = new DotSuggestionAnswer();
 
+
+
         try {
-            System.out.println("start parsing");
+
             String s = makeCodeComplete(request);
             prepareParserConfigForDotSuggestion();
             // парсим
@@ -138,6 +140,20 @@ public class ParserUtils {
                 FieldAccessExpr fe = fieldAccessExprs.get(0);
 
                 Expression e = fe.getScope();
+
+                ResolvedType resolvedType = e.calculateResolvedType();
+
+                // отдельная обработка массива
+                if (resolvedType.isArray()){
+                    List<String> methods = List.of("clone");
+                    List<String> fields = List.of("length");
+                    dotSuggestionAnswer.setMethods(methods);
+                    dotSuggestionAnswer.setFields(fields);
+                    return dotSuggestionAnswer;
+                }
+
+
+
                 List<String> methods = e.calculateResolvedType().asReferenceType().getAllMethods()
                             .stream().filter(m ->
                                     m.accessSpecifier().asString().equals("public")
