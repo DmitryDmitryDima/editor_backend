@@ -28,10 +28,13 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,6 +43,55 @@ public class ParserUtils {
     private static final Logger logger = LoggerFactory.getLogger(ParserUtils.class);
 
 
+
+
+    public ImportAnswer importParsing(ImportRequest importRequest){
+        prepareParserConfigForDotSuggestion();
+
+        try {
+            HashSet<String> imports = new HashSet<>();
+            CompilationUnit c = StaticJavaParser.parse(importRequest.getCode());
+            // тестируем возможности определения типов, не импортированных ранее
+            // суть алгоритма заключается в том, что мы проверяем существование класса с помощью рефлексии
+            // это работает для внутренних java классов, для классов, внешних по отношению к проекту, мы должны загрузить свой resolver
+            List<String> languagePackages = List.of(
+
+                    "java.util", "java.io", "java.lang.reflect",
+                    "java.time", "java.math", "java.nio"
+            );
+
+            c.findAll(ClassOrInterfaceType.class).forEach(el->{
+                try {
+                    //System.out.println(el.getNameAsString());
+                    el.resolve().describe();
+                }
+                catch (Exception e){
+                    //e.printStackTrace();
+                    for (String p:languagePackages){
+                        String fullName = p+"."+el.getNameAsString();
+
+                        try {
+
+                            String importStatement  = "import " +Class.forName(fullName).getPackageName()+"."+el.getNameAsString()+";";
+                            System.out.println(importStatement);
+                            imports.add(importStatement);
+                            break;
+
+                        } catch (ClassNotFoundException ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    }
+                }
+            });
+
+            return new ImportAnswer(imports);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            // пустой ответ
+            return new ImportAnswer(new HashSet<>());
+        }
+    }
 
 
     // вставляем слово заглушки
@@ -69,36 +121,7 @@ public class ParserUtils {
 
 
 
-            // тестируем возможности определения типов, не импортированных ранее
-            // суть алгоритма заключается в том, что мы проверяем существование класса с помощью рефлексии
-            // это работает для внутренних java классов, для классов, внешних по отношению к проекту, мы должны загрузить свой resolver
-            List<String> languagePackages = List.of(
 
-                    "java.util", "java.io", "java.lang.reflect",
-                    "java.time", "java.math", "java.nio"
-            );
-
-            c.findAll(ClassOrInterfaceType.class).forEach(el->{
-                try {
-                    System.out.println(el.getNameAsString());
-                    System.out.println(el.resolve().describe());
-                }
-                catch (Exception e){
-                    //e.printStackTrace();
-                    for (String p:languagePackages){
-                        String fullName = p+"."+el.getNameAsString();
-
-                        try {
-
-                            System.out.println(Class.forName(fullName).getPackageName());
-                            break;
-
-                        } catch (ClassNotFoundException ex) {
-                            throw new RuntimeException(ex);
-                        }
-                    }
-                }
-            });
 
 
 

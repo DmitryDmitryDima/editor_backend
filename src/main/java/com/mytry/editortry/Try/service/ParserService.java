@@ -12,6 +12,8 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
+import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
 import com.mytry.editortry.Try.utils.parser.ParserUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +50,10 @@ public class ParserService {
 
     }
 
-    //
+    // запрос импортов
+    public ImportAnswer importSuggestion(ImportRequest request){
+        return parserUtils.importParsing(request);
+    }
 
 
 

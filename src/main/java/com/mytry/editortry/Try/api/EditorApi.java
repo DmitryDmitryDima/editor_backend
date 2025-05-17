@@ -65,9 +65,10 @@ public class EditorApi {
     @PostMapping("/suggest/import")
     public ImportAnswer suggestImport(@RequestBody ImportRequest importRequest){
 
-       // обращение к ai сервису
 
-       return null;
+
+
+       return parserService.importSuggestion(importRequest);
     }
 
 
