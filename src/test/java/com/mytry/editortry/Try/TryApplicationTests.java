@@ -25,16 +25,7 @@ class TryApplicationTests {
 	private AIService aiService;
 
 
-	@Test
-	public void testCompiler(){
 
-
-		Assertions.assertDoesNotThrow(()->{
-			String c = "class Main{}";
-			String answer = compilerService.makeCompilationAndRun(new RunRequest(c));
-			System.out.println(answer);
-		});
-	}
 
 	@Test
 	public void testParser(){

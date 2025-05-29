@@ -1,5 +1,6 @@
 package com.mytry.editortry.Try.service;
 
+import com.mytry.editortry.Try.dto.run.RunAnswer;
 import com.mytry.editortry.Try.dto.run.RunRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,11 +44,12 @@ public class CompilerService {
 
 
     // компиляция и запуск с использованием временного файла
-    public String makeCompilationAndRun(RunRequest request) throws Exception{
+    public RunAnswer makeCompilationAndRun(RunRequest request) throws Exception{
 
         String code = request.getCode();
         Path tempDir = null;
         String filename = "Main.java";
+        RunAnswer answer = new RunAnswer();
 
         try {
 
@@ -81,7 +83,10 @@ public class CompilerService {
 
 
             // если компиляция закончилась с ошибкой - возвращаем ее лог
-            if (result!=0) return errorStream.toString();
+            if (result!=0) {
+                answer.setMessage(errorStream.toString());
+                return answer;
+            }
 
 
 
@@ -165,7 +170,8 @@ public class CompilerService {
                 process.destroy(); // Terminate the process
 
                 // тут я присоединяю все то, что попало в консоль до ошибки
-                return runtimeOutputStream+  "\n Execution timed out after 5 seconds.";
+                answer.setMessage(runtimeOutputStream+  "\n Execution timed out after 5 seconds.");
+                return answer;
             }
 
 
@@ -190,7 +196,9 @@ public class CompilerService {
                 if (errorMessage.isEmpty()) {
                     errorMessage = "Execution failed with exit code: " + exitCode;
                 }
-                return "Execution failed:\n" + errorMessage;
+
+                answer.setMessage("Execution failed:\n" + errorMessage);
+                return answer;
             }
 
 
@@ -199,8 +207,8 @@ public class CompilerService {
             outputThread.join();
             errorThread.join();
 
-
-            return runtimeOutputStream.toString();
+            answer.setMessage(runtimeOutputStream.toString());
+            return answer;
 
 
 
@@ -209,7 +217,8 @@ public class CompilerService {
 
         // если при компиляции или запуске произошла какая-то непредвиденная ошибка
         catch (Exception e) {
-            return "Error "+e.getMessage();
+            answer.setMessage("Error "+e.getMessage());
+            return answer;
         }
 
 

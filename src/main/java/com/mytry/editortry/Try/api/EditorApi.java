@@ -51,30 +51,14 @@ public class EditorApi {
     @PostMapping("/run")
     public RunAnswer run(@RequestBody RunRequest request) throws Exception {
 
-        // форматирование строки закинь в сервис - 8px на символ
-        String compilerAnswer = compilerService.makeCompilationAndRun(request);
-        Integer width = request.getScreenWidth();
-        StringBuilder stringBuffer = new StringBuilder();
 
-        int parts = compilerAnswer.length()*8/(width);
-
-        int pointer = 0;
-        while (parts>0){
-            String sub = compilerAnswer.substring(pointer, pointer+(width/8));
-            stringBuffer.append(sub);
-            stringBuffer.append("\n");
-            pointer+=(width/8);
-            parts--;
-        }
-
-        String finalSub = compilerAnswer.substring(pointer, compilerAnswer.length()-1);
-
-        stringBuffer.append(finalSub);
+        RunAnswer compilerAnswer = compilerService.makeCompilationAndRun(request);
 
 
 
 
-        return new RunAnswer(stringBuffer.toString());
+
+        return compilerAnswer.optimize(request.getScreenWidth());
     }
 
 
