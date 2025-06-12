@@ -149,6 +149,7 @@ public class ParserUtils {
                     List<String> fields = List.of("length");
                     dotSuggestionAnswer.setMethods(methods);
                     dotSuggestionAnswer.setFields(fields);
+
                     return dotSuggestionAnswer;
                 }
 
@@ -161,8 +162,15 @@ public class ParserUtils {
                                             m.accessSpecifier().asString().isEmpty())
                             .map(ResolvedDeclaration::getName).distinct().toList();
 
+
+                List<String> fields = e.calculateResolvedType().asReferenceType().getDeclaredFields()
+                        .stream().filter(f->
+                    f.accessSpecifier().asString().equals("public")).map(ResolvedDeclaration::getName).distinct().toList();
+
+
+
                 dotSuggestionAnswer.setMethods(methods);
-                dotSuggestionAnswer.setFields(new ArrayList<>());
+                dotSuggestionAnswer.setFields(fields);
 
                 return dotSuggestionAnswer;
 
