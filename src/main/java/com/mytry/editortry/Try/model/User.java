@@ -1,6 +1,5 @@
 package com.mytry.editortry.Try.model;
 
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,26 +9,18 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class File {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column
-    private String name;
+    @Column(unique = true, length = 50)
+    private String username;
 
-    @Column
-    private String extension;
+    /*
+    private List<Project> projects;
+     */
 
-
-    // храним полный путь - будет полезно для будущих фич
-    @Column
-    private String path;
-
-
-    // private Directory directory;
-
-    //
 
 }
