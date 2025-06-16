@@ -5,7 +5,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -18,9 +22,9 @@ public class User {
     @Column(unique = true, length = 50)
     private String username;
 
-    /*
-    private List<Project> projects;
-     */
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "owner")
+    private List<Project> projects = new ArrayList<>();
+
 
 
 }

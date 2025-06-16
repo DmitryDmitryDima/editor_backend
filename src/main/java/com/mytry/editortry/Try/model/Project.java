@@ -1,15 +1,13 @@
 package com.mytry.editortry.Try.model;
 
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "projects")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,11 +19,18 @@ public class Project {
 
     private String name;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
     /*
     private Directory root; // на этой базе мы строим всю иерархию
+    */
 
-    private User owner;
-     */
+
+
+
+
 
 
 }
