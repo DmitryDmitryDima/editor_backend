@@ -1,5 +1,7 @@
 package com.mytry.editortry.Try.dto.users;
 
+import com.mytry.editortry.Try.dto.projects.ProjectDTO;
+import com.mytry.editortry.Try.model.Project;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,9 +13,9 @@ import java.util.List;
 @NoArgsConstructor
 public class UserDTO {
 
-    public String username;
+    private String username;
 
-    List<String> projects;
+    private List<ProjectDTO> projects;
 
 
 
