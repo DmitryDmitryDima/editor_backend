@@ -1,25 +1,26 @@
 package com.mytry.editortry.Try.dto.projects;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProjectDTO {
+public class DirectoryDTO {
 
     private Long id;
 
     private String name;
 
-
-
-
-    private DirectoryDTO root;
+    private List<DirectoryDTO> children;
 
     /*
-    private Date lastView;
-     */
+    private List<DirectoryDTO> sub;
 
+    private List<FileDTO> files;
+     */
 }

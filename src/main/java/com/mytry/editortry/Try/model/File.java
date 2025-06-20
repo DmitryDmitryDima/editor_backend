@@ -29,8 +29,10 @@ public class File {
     private String path;
 
 
-    // private Directory directory;
 
-    //
+    /*
+    @ManyToOne
+    private Directory parent;
+     */
 
 }

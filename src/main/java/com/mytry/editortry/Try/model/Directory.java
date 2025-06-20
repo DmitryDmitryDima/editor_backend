@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.List;
+
 @Entity
 @Table(name = "directories")
 @Getter
@@ -18,11 +20,20 @@ public class Directory {
 
     private String name;
 
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<Directory> children;
+
+    // в корневой папке нет родителя
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id", referencedColumnName = "id")
+    private Directory parent;
+
+
+
+
     /*
 
-    private Directory parent;   // если корень, то родителя нет - null
 
-    private List<Directory> children; // поддиректории
 
     private List<File> files; // файлы в пределах директории
 

@@ -23,9 +23,10 @@ public class Project {
     @JoinColumn(name = "owner_id")
     private User owner;
 
-    /*
+    @OneToOne
+    @JoinColumn(name = "root_id", referencedColumnName = "id")
     private Directory root; // на этой базе мы строим всю иерархию
-    */
+
 
 
 

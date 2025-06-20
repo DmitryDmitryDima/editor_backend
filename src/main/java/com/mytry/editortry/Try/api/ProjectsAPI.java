@@ -22,19 +22,12 @@ public class ProjectsAPI {
     public ResponseEntity<ProjectDTO> loadProjectTree(@PathVariable(name = "projectname") String projectname,
                                                       @PathVariable(name = "username") String username){
 
-        // в данном случае наверно стоит готовить дерево внутри сервиса, будем смотреть на тяжесть кода
-        Project project = projectService.loadProjectByUsernameAndName(username, projectname);
 
 
-        return ResponseEntity.ok(mapToDTO(project));
+        return ResponseEntity.ok(projectService.loadProjectByUsernameAndName(username, projectname));
 
     }
 
 
-    private ProjectDTO mapToDTO(Project project){
-        ProjectDTO answer = new ProjectDTO();
-        answer.setName(project.getName());
-        answer.setId(project.getId());
-        return answer;
-    }
+
 }
