@@ -37,12 +37,13 @@ public class ProjectService {
         dto.setName(directory.getName());
         dto.setId(directory.getId());
 
+
         if (layer!=null){
             layer.add(dto);
         }
 
         if (directory.getChildren().isEmpty()) {
-
+            dto.setChildren(new ArrayList<>());
             System.out.println("end reached");
         }
 
