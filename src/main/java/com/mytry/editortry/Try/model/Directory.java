@@ -28,6 +28,9 @@ public class Directory {
     @JoinColumn(name = "parent_id", referencedColumnName = "id")
     private Directory parent;
 
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<File> files;
+
 
 
 

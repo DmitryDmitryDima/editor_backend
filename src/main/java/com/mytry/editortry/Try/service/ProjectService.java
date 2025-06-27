@@ -2,16 +2,20 @@ package com.mytry.editortry.Try.service;
 
 
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
+import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
 import com.mytry.editortry.Try.exceptions.project.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
+import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ProjectService {
@@ -30,21 +34,68 @@ public class ProjectService {
     }
 
 
+
+
+
     // проходим по директория deep-first-traversal, готовя dto
 
-    private void traverse(Directory directory, DirectoryDTO dto, ArrayList<DirectoryDTO> layer){
+    private void traverse(Directory directory, DirectoryDTO dto,
+                          ArrayList<DirectoryDTO> layer,
+                          Map<String, FlatTreeMember> flatTree){
 
         dto.setName(directory.getName());
         dto.setId(directory.getId());
 
+        FlatTreeMember directoryMember = new FlatTreeMember();
+        directoryMember.setIndex("directory_"+directory.getId());
+        directoryMember.setData(directory.getName());
+        directoryMember.setFolder(true);
+        directoryMember.setCanMove(true);
+        directoryMember.setCanRename(true);
+
+
 
         if (layer!=null){
             layer.add(dto);
+
         }
+
+        if (layer==null){
+            // если корень
+            directoryMember.setIndex("root");
+            directoryMember.setCanMove(false);
+            directoryMember.setCanRename(false);
+
+        }
+
+        /*
+        обработка файлов
+         */
+
+        if (directory.getFiles()!=null){
+            for (File file:directory.getFiles()){
+                String index = "file_"+file.getId();
+                FlatTreeMember fileMember = new FlatTreeMember();
+                fileMember.setIndex(index);
+                fileMember.setData(file.getName()+"."+file.getExtension());
+                fileMember.setFolder(false);
+                fileMember.setCanMove(true);
+                fileMember.setCanRename(true);
+
+                directoryMember.getChildren().add(index);
+
+                flatTree.put(index, fileMember);
+
+
+
+            }
+        }
+
+
 
         if (directory.getChildren().isEmpty()) {
             dto.setChildren(new ArrayList<>());
-            System.out.println("end reached");
+            //System.out.println("end reached");
         }
 
         else {
@@ -52,9 +103,13 @@ public class ProjectService {
             dto.setChildren(children);
 
             for (Directory d:directory.getChildren()){
-                traverse(d, new DirectoryDTO(), children);
+                String index = "directory_"+d.getId();
+                traverse(d, new DirectoryDTO(), children, flatTree);
+                directoryMember.getChildren().add(index);
             }
         }
+
+        flatTree.put(directoryMember.getIndex(), directoryMember);
     }
 
 
@@ -68,8 +123,10 @@ public class ProjectService {
 
         DirectoryDTO rootDTO = new DirectoryDTO();
 
+        Map<String, FlatTreeMember> flatTree = new HashMap<>(); // плоская структура
 
-        traverse(root, rootDTO, null);
+
+        traverse(root, rootDTO, null, flatTree);
 
 
 
@@ -78,6 +135,7 @@ public class ProjectService {
         ProjectDTO projectDTO = new ProjectDTO();
 
         projectDTO.setRoot(rootDTO);
+        projectDTO.setFlatTree(flatTree);
 
 
 

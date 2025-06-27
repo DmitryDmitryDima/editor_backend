@@ -2,9 +2,11 @@ package com.mytry.editortry.Try;
 
 
 import com.mytry.editortry.Try.model.Directory;
+import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
+import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class Initializer implements CommandLineRunner {
     @Autowired
     private DirectoryRepository directoryRepository;
 
+    @Autowired
+    private FileRepository fileRepository;
+
     @Override
     public void run(String... args) throws Exception {
 
@@ -37,6 +42,27 @@ public class Initializer implements CommandLineRunner {
 
         Directory root = new Directory();
         root.setName(projectName);
+
+        File file = new File();
+        file.setExtension("java");
+        file.setName("BinarySearch");
+
+        File file1 = new File();
+        file1.setExtension("java");
+        file1.setName("BinarySearch");
+
+
+
+        file.setParent(root);
+
+        List<File> rootFiles = new ArrayList<>();
+
+        rootFiles.add(file);
+
+        root.setFiles(rootFiles);
+
+
+
 
         Directory sub = new Directory();
         sub.setName("package");
@@ -49,6 +75,14 @@ public class Initializer implements CommandLineRunner {
         Directory sub3 = new Directory();
         sub3.setName("package3");
         sub3.setParent(sub);
+
+        file1.setParent(sub3);
+
+        List<File> sub3Files = new ArrayList<>();
+        sub3Files.add(file1);
+        sub3.setFiles(sub3Files);
+
+
 
         List<Directory> rootChildren = new ArrayList<>();
         rootChildren.add(sub);

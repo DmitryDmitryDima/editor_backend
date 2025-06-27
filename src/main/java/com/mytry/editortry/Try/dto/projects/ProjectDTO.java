@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -17,6 +19,8 @@ public class ProjectDTO {
 
 
     private DirectoryDTO root;
+
+    private Map<String, FlatTreeMember> flatTree;
 
     /*
     private Date lastView;

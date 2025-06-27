@@ -23,16 +23,19 @@ public class File {
     @Column
     private String extension;
 
-
+    /*
     // храним полный путь - будет полезно для будущих фич
     @Column
     private String path;
 
-
-
-    /*
-    @ManyToOne
-    private Directory parent;
      */
+
+
+
+
+    @ManyToOne
+    @JoinColumn(name = "parent_id", referencedColumnName = "id")
+    private Directory parent;
+
 
 }
