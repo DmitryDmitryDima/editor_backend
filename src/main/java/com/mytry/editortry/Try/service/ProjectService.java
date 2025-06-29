@@ -9,6 +9,8 @@ import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,15 @@ public class ProjectService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+
+    @Transactional
+    public void deleteProject(Long id){
+        if (!projectRepository.existsById(id)){
+            throw new EntityNotFoundException("no found");
+        }
+        projectRepository.deleteById(id);
+    }
 
 
 

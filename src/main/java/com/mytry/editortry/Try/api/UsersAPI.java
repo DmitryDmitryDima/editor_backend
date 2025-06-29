@@ -5,6 +5,7 @@ import com.mytry.editortry.Try.dto.projects.ProjectDTO;
 import com.mytry.editortry.Try.dto.users.UserDTO;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
+import com.mytry.editortry.Try.service.ProjectService;
 import com.mytry.editortry.Try.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,9 @@ public class UsersAPI {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private ProjectService projectService;
 
 
     @GetMapping("/{username}")
@@ -34,6 +38,28 @@ public class UsersAPI {
         return ResponseEntity.ok(mapUser(user));
 
     }
+
+
+    // crud операции буду делать напрямую по айди - таким образом я их логически отделю
+    @PostMapping("/createProject")
+    public void createProject(){
+
+    }
+
+
+    @PostMapping("actions/renameProject/{id}")
+    public void renameProject(@PathVariable("id") Long id){
+
+    }
+
+    @PostMapping("actions/deleteProject/{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id){
+        projectService.deleteProject(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
+
 
 
 

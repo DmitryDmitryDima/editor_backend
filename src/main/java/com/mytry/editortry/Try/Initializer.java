@@ -39,9 +39,13 @@ public class Initializer implements CommandLineRunner {
         user.setUsername("dima");
 
         String projectName = "demo";
+        String projectName1 = "demo2";
 
         Directory root = new Directory();
         root.setName(projectName);
+
+        Directory root1 = new Directory();
+        root1.setName(projectName1);
 
         File file = new File();
         file.setExtension("java");
@@ -96,17 +100,24 @@ public class Initializer implements CommandLineRunner {
         root.setChildren(rootChildren);
 
         directoryRepository.save(root);
+        directoryRepository.save(root1);
 
 
 
 
         Project project = new Project();
+        Project project1 = new Project();
         project.setName(projectName);
         project.setRoot(root);
 
+        project1.setName(projectName1);
+        project1.setRoot(root1);
+
         userRepository.save(user);
         project.setOwner(user);
+        project1.setOwner(user);
 
         projectRepository.save(project);
+        projectRepository.save(project1);
     }
 }
