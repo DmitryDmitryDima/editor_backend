@@ -8,14 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users/{username}/")
+@RequestMapping("/api/users/{username}/projects/{projectname}")
 public class ProjectsAPI {
 
     @Autowired
     private ProjectService projectService;
 
 
-    @GetMapping("/{projectname}")
+    @GetMapping
     public ResponseEntity<ProjectDTO> loadProjectTree(@PathVariable(name = "projectname") String projectname,
                                                       @PathVariable(name = "username") String username){
 
@@ -24,6 +24,19 @@ public class ProjectsAPI {
         return ResponseEntity.ok(projectService.loadProjectByUsernameAndName(username, projectname));
 
     }
+
+    @PostMapping("/createDirectory/{index}/{suggestion}")
+    public ResponseEntity<Void> createDirectory(@PathVariable(name = "projectname") String projectname,
+                                                @PathVariable(name = "username") String username,
+                                                @PathVariable("index") String index,
+                                                @PathVariable("suggestion") String suggestion){
+
+        projectService.createDirectory(username, projectname, index, suggestion);
+
+        return ResponseEntity.noContent().build();
+    }
+
+
 
 
 

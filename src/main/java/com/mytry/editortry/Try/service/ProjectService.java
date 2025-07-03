@@ -6,18 +6,23 @@ import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
 import com.mytry.editortry.Try.exceptions.project.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
+
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
+import com.mytry.editortry.Try.model.User;
+import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import com.mytry.editortry.Try.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class ProjectService {
@@ -25,6 +30,17 @@ public class ProjectService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private DirectoryRepository directoryRepository;
+
+
+
+    @Value("${files.directory}")
+    private String disk_location;
 
 
     @Transactional
@@ -36,6 +52,68 @@ public class ProjectService {
     }
 
 
+    // создание нового проекта с директорией
+    @Transactional(rollbackOn = IllegalArgumentException.class)
+    public void createProject(String username, String projectName) throws IllegalArgumentException {
+
+        /*
+        вариант кода без каскадирования
+         */
+
+        Project project = new Project();
+        project.setName(projectName);
+
+        User user = userRepository
+                .findWithProjectsByUsername(username).orElseThrow(()->new UsernameNotFoundException("user doesn't exists"));
+
+        boolean projectExists = user.getProjects().stream()
+                .anyMatch(p -> p.getName().equals(projectName));
+
+        if (projectExists) {
+            throw new IllegalArgumentException("Project already exists");
+        }
+
+        Directory root = new Directory();
+        root.setName(projectName);
+
+        directoryRepository.save(root);
+
+        project.setRoot(root);
+
+        project.setOwner(user);
+        user.getProjects().add(project);
+
+        projectRepository.save(project);
+
+
+
+
+        /*
+        Манипуляции с файловой системой делаются после успешной транзакции. Если выпадает исключение - откатывается вся транзакция
+         */
+
+        //createDirectoryAtDisk(username, projectName);
+
+    }
+
+
+    private void createDirectoryAtDisk(String username, String projectName) throws IllegalArgumentException{
+        java.io.File dir = new java.io.File(disk_location+username+"/projects/"+projectName);
+        System.out.println(dir.getAbsolutePath());
+        if (!dir.exists()){
+            boolean result  = dir.mkdir();
+            if(!result){
+                throw new IllegalArgumentException("directory didn't created");
+            }
+        }
+
+        else {
+            throw new IllegalArgumentException("directory already exists");
+        }
+
+    }
+
+
 
 
     // имя проекта - уникально в пределах одного пользователя
@@ -43,6 +121,117 @@ public class ProjectService {
 
         return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
     }
+
+    @Transactional(rollbackOn = IllegalArgumentException.class)
+    public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
+
+
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
+                .orElseThrow(ProjectNotFoundException::new);
+
+        String fullPath = disk_location+"/"+username+"/projects/";
+        Directory parent = null;
+
+        if (index.equals("basic_root")){
+            // работаем с корневой папкой проекта
+            fullPath = fullPath+projectName+"/"+suggestedDirectoryName;
+            parent = project.getRoot();
+        }
+
+        else {
+
+            Long id = Long.parseLong(index.split("_")[1]);
+            // наша цель - сгенерировать путь до директории
+            List<String> way = new ArrayList<>();
+
+
+
+            parent = generateWay(project.getRoot(), id, way);
+
+
+
+
+            if (parent == null){
+                throw new IllegalArgumentException();
+            }
+
+            StringBuilder stringBuilder = new StringBuilder(fullPath);
+
+            for (String s:way){
+                stringBuilder.append(s);
+                stringBuilder.append("/");
+            }
+            fullPath = stringBuilder+suggestedDirectoryName;
+        }
+
+        // мы сохраняем directory сущность, после чего в файловой системе создаем соответсвующую папку согласно fullPath
+
+        // проверяем уникальность имени
+
+
+        for (Directory d:parent.getChildren()){
+            if (d.getName().equals(suggestedDirectoryName)){
+                throw new IllegalArgumentException("not unique");
+            }
+        }
+        // пишем в базу
+        Directory toCreate = new Directory();
+        toCreate.setName(suggestedDirectoryName);
+        parent.getChildren().add(toCreate);
+        toCreate.setParent(parent);
+
+        directoryRepository.save(toCreate);
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    private Directory generateWay(Directory candidate,
+                                  Long directoryId,
+                                  List<String> way){
+
+        if (directoryId.equals(candidate.getId())){
+
+            way.add(candidate.getName());
+            return candidate;
+        }
+
+        else {
+            if (!candidate.getChildren().isEmpty()){
+                way.add(candidate.getName());
+
+                for (Directory d:candidate.getChildren()){
+                    Directory found = generateWay(d, directoryId, way);
+                    if (found!=null) {
+                        return found;
+                    }
+                }
+
+                way.remove(way.size()-1);
+                return null;
+
+
+
+
+            }
+            else {
+                return null;
+            }
+        }
+
+    }
+
+
+
+
 
 
 
@@ -73,7 +262,7 @@ public class ProjectService {
 
         if (layer==null){
             // если корень
-            directoryMember.setIndex("root");
+            directoryMember.setIndex("basic_root");
             directoryMember.setCanMove(false);
             directoryMember.setCanRename(false);
 
@@ -144,9 +333,13 @@ public class ProjectService {
 
 
         ProjectDTO projectDTO = new ProjectDTO();
+        projectDTO.setName(project.getName());
+        projectDTO.setId(project.getId());
 
         projectDTO.setRoot(rootDTO);
         projectDTO.setFlatTree(flatTree);
+
+
 
 
 

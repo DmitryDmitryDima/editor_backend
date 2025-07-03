@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users/")
+@RequestMapping("/api/users/{username}")
 public class UsersAPI {
 
     @Autowired
@@ -24,7 +24,7 @@ public class UsersAPI {
     private ProjectService projectService;
 
 
-    @GetMapping("/{username}")
+    @GetMapping
     public ResponseEntity<UserDTO> getUserByUsername(@PathVariable("username") String username){
 
         User user = userService.getUserByUsername(username);
@@ -40,22 +40,26 @@ public class UsersAPI {
     }
 
 
-    // crud операции буду делать напрямую по айди - таким образом я их логически отделю
-    @PostMapping("/createProject")
-    public void createProject(){
 
+    @PostMapping("/createProject/{projectName}")
+    public ResponseEntity<Void> createProject(@PathVariable("username") String username,
+                                              @PathVariable("projectName") String projectName) throws Exception {
+        projectService.createProject(username, projectName);
+        return ResponseEntity.noContent().build();
     }
 
 
-    @PostMapping("actions/renameProject/{id}")
-    public void renameProject(@PathVariable("id") Long id){
 
-    }
 
-    @PostMapping("actions/deleteProject/{id}")
+    @PostMapping("/deleteProject/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id){
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/renameProject/{id}")
+    public void renameProject(@PathVariable("username") String username, @PathVariable("id") Long id){
+
     }
 
 
