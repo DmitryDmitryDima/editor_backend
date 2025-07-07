@@ -33,12 +33,8 @@ public class Directory {
 
 
 
-
-    /*
-
-
-
-    private List<File> files; // файлы в пределах директории
-
-     */
+    @Override
+    public String toString(){
+        return name;
+    }
 }

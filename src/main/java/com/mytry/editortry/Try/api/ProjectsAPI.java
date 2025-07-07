@@ -37,6 +37,21 @@ public class ProjectsAPI {
     }
 
 
+    // мы не можем удалить корневую папку! поэтому извлечение id происходит по однозначному алгоритму
+
+    @PostMapping("/removeDirectory/{index}")
+    public ResponseEntity<Void> removeDirectory(
+            @PathVariable(name = "projectname") String projectname,
+            @PathVariable(name = "username") String username,
+            @PathVariable("index") String index
+    ){
+
+        projectService.deleteDirectory(index);
+
+        return ResponseEntity.noContent().build();
+    }
+
+
 
 
 

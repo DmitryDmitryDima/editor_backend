@@ -11,6 +11,7 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
+import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,6 +37,9 @@ public class ProjectService {
 
     @Autowired
     private DirectoryRepository directoryRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
 
 
 
@@ -122,6 +126,35 @@ public class ProjectService {
         return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
     }
 
+
+    @Transactional(rollbackOn = IllegalArgumentException.class)
+    public void deleteDirectory(String index){
+        Long id = Long.parseLong(index.split("_")[1]);
+
+        Directory directory = directoryRepository.findById(id).orElseThrow(IllegalArgumentException::new);
+
+        ArrayDeque<Directory> directoriesToDelete = new ArrayDeque<>();
+        ArrayDeque<File> filesToDelete = new ArrayDeque<>();
+
+        collectChildren(directory, directoriesToDelete, filesToDelete);
+
+        System.out.println(directoriesToDelete);
+        System.out.println(filesToDelete);
+
+        while(!filesToDelete.isEmpty()){
+            fileRepository.delete(filesToDelete.removeFirst());
+        }
+
+        while (!directoriesToDelete.isEmpty()){
+            directoryRepository.delete(directoriesToDelete.removeFirst());
+        }
+
+
+
+
+
+    }
+
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
 
@@ -192,6 +225,19 @@ public class ProjectService {
 
 
 
+    }
+
+    // собираем ссылки на все поддериктории и файлы при удалении
+
+    private void collectChildren(Directory directory, ArrayDeque<Directory> directories, ArrayDeque<File> files){
+
+        for (Directory d:directory.getChildren()){
+            collectChildren(d, directories, files);
+        }
+
+        files.addAll(directory.getFiles());
+
+        directories.add(directory);
     }
 
     private Directory generateWay(Directory candidate,

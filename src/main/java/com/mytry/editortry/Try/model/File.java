@@ -23,12 +23,7 @@ public class File {
     @Column
     private String extension;
 
-    /*
-    // храним полный путь - будет полезно для будущих фич
-    @Column
-    private String path;
 
-     */
 
 
 
@@ -36,6 +31,12 @@ public class File {
     @ManyToOne
     @JoinColumn(name = "parent_id", referencedColumnName = "id")
     private Directory parent;
+
+
+    @Override
+    public String toString(){
+        return name+"."+extension;
+    }
 
 
 }
