@@ -41,7 +41,7 @@ public class ProjectsAPI {
 
     @PostMapping("/removeDirectory/{index}")
     public ResponseEntity<Void> removeDirectory(
-            @PathVariable(name = "projectname") String projectname,
+            @PathVariable(name = "projectname") String projectName,
             @PathVariable(name = "username") String username,
             @PathVariable("index") String index
     ){
@@ -50,6 +50,21 @@ public class ProjectsAPI {
 
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/removeFile/{index}")
+    public ResponseEntity<Void> removeFile(
+            @PathVariable(name = "projectname") String projectName,
+            @PathVariable(name = "username") String username,
+            @PathVariable("index") String index
+    ){
+
+
+
+        return ResponseEntity.noContent().build();
+    }
+
+
+
 
 
 

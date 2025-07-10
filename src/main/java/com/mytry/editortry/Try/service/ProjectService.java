@@ -126,12 +126,23 @@ public class ProjectService {
         return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
     }
 
+    public void deleteFile(String index){
+
+    }
+
 
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void deleteDirectory(String index){
         Long id = Long.parseLong(index.split("_")[1]);
 
+
+
+
+
         Directory directory = directoryRepository.findById(id).orElseThrow(IllegalArgumentException::new);
+        if (directory.getParent()==null){
+            throw new IllegalArgumentException("this is root");
+        }
 
         ArrayDeque<Directory> directoriesToDelete = new ArrayDeque<>();
         ArrayDeque<File> filesToDelete = new ArrayDeque<>();
