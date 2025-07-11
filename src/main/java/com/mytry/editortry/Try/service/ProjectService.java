@@ -454,6 +454,7 @@ public class ProjectService {
 
                 directoryMember.getChildren().add(index);
 
+
                 flatTree.put(index, fileMember);
 
 
