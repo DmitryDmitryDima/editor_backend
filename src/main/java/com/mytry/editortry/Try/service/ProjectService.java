@@ -131,27 +131,30 @@ public class ProjectService {
     }
 
 
-    @Transactional(rollbackOn = {IllegalArgumentException.class, NoSuchFileException.class, IOException.class})
+    @Transactional(rollbackOn = {IllegalArgumentException.class})
     public void deleteFile(String username, String projectName, String index) throws Exception{
 
-        // проверяем, существует ли проект, послче чего выполняем проверку - сравниваем корневые папки
+        // проверяем, существует ли проект
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
                 ()-> new IllegalArgumentException("project doesn't exists")
         );
 
-
+        // извлекаем id файла, полученный с запроса
         Long id = Long.parseLong(index.split("_")[1]);
 
+        // извлекаем сущность файла из базы данных
         File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
 
         // конструируем путь до файла
         ArrayDeque<String> way = new ArrayDeque<>();
         Directory parent = file.getParent();
+
+        // файл не может быть "бесхозным"
         if (parent==null){
             throw new IllegalArgumentException("no parent directory");
         }
 
-
+        // начиная с файла, добираемся до корневой папки
         Long parentId=-1L;
         while (parent!=null){
             parentId = parent.getId();
@@ -164,11 +167,44 @@ public class ProjectService {
         way.forEach(sb::append);
 
         String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
-        System.out.println(fullPath);
 
+
+        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
         if (!Objects.equals(parentId, project.getRoot().getId())){
             throw new IllegalArgumentException("Invalid file path");
         }
+
+
+        /*
+        тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
+
+        1) Генерируем UUID для переименования
+        2) Производим попытку переименования файла на диске.
+         Компенсация - метод возвращает ошибку
+        3) Сохраняем новое имя и статус для сущности в бд.
+         Компенсация - создание compensation_query с кодом ошибки 'file_db_rename_before_removing_error'
+         Запись содержит в себе следующую инфу - id файла в бд, новое имя
+         Обработчик пробует переименовать запись в бд, в случае успеха совершает шаги ниже.
+
+        4) Пробуем удалить файл с диска
+          Компенсация - создание compensation_query с кодом ошибки 'file_disk_remove_error'
+          Запись содержит в седе следующую инфу - путь к файлу (с новым именем), id файла в бд
+          Обработчик пробует стереть файл, после чего реализует шаг 5
+        5) Пробуем окончательно удалить файл из БД
+           Компенсация - создание compensation_query с кодом ошибки 'file_db_removing_error'
+           Запись содержит в себе id файла в бд
+           Обработчик пробует стереть файл из бд
+
+
+           таким образом, каждый из верхних шагов может продолжать алгоритм с той точки, где произошла остановка
+           Соответствующим образом каждый из обработчиков может генерировать compensation_query при переходе на следующий шаг
+           Осталось придумать, как сделать цепочку решений более элегантной, в ООП стиле
+         */
+
+
+        /*
+        ниже - старая логика
+         */
 
         fileRepository.delete(file);
 
