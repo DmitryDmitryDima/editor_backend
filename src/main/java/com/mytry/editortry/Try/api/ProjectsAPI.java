@@ -36,6 +36,17 @@ public class ProjectsAPI {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/createFile/{index}/{suggestion}")
+    public ResponseEntity<Void> createFile(
+            @PathVariable(name = "projectname") String projectname,
+            @PathVariable(name = "username") String username,
+            @PathVariable("index") String index,
+            @PathVariable("suggestion") String suggestion
+    ){
+        projectService.createFile(username, projectname, index, suggestion);
+        return ResponseEntity.noContent().build();
+    }
+
 
     // мы не можем удалить корневую папку! поэтому извлечение id происходит по однозначному алгоритму
 
@@ -56,9 +67,10 @@ public class ProjectsAPI {
             @PathVariable(name = "projectname") String projectName,
             @PathVariable(name = "username") String username,
             @PathVariable("index") String index
-    ){
+    ) throws Exception {
 
 
+        projectService.deleteFile(username, projectName, index);
 
         return ResponseEntity.noContent().build();
     }

@@ -10,6 +10,7 @@ import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -32,9 +33,101 @@ public class Initializer implements CommandLineRunner {
     @Autowired
     private FileRepository fileRepository;
 
+    @Value("${files.directory}")
+    private String disk_location;
+
+    // для теста заполняем базу данных, основываясь на текущем состоянии файловой системы
+    private void travelAndPersistWorkingDirectory(){
+        String username = "dima";
+        User user = new User();
+        user.setUsername(username);
+
+
+        userRepository.save(user);
+
+        String projectsDirectory = disk_location+username+"/projects/";
+
+        java.io.File projectsFolder = new java.io.File(projectsDirectory);
+
+        java.io.File[] projects = projectsFolder.listFiles();
+        if (projects==null){
+            return;
+        }
+
+        for (java.io.File f:projects){
+            if (f.isDirectory()){
+                Project project = new Project();
+                project.setName(f.getName());
+                project.setOwner(user);
+                Directory root = new Directory();
+                project.setRoot(root);
+                root.setName(f.getName());
+
+
+                prepareMyRoot(f, root);
+                directoryRepository.save(root);
+                project.setRoot(root);
+                project.setOwner(user);
+                projectRepository.save(project);
+
+            }
+        }
+
+
+
+    }
+
+    private void prepareMyRoot(java.io.File root, Directory parentEntity){
+
+        parentEntity.setChildren(new ArrayList<>());
+        parentEntity.setFiles(new ArrayList<>());
+
+        java.io.File[] childrenFiles = root.listFiles();
+
+        if (childrenFiles!=null){
+            for (java.io.File f:childrenFiles){
+                if (f.isDirectory()){
+                    Directory child = new Directory();
+                    child.setName(f.getName());
+                    parentEntity.getChildren().add(child);
+                    child.setParent(parentEntity);
+                    prepareMyRoot(f, child);
+                }
+
+                else {
+                    File file = new File();
+                    String fullName = f.getName();
+                    int lastIndex = fullName.lastIndexOf(".");
+
+                    if (lastIndex>0){
+                        file.setName(f.getName().substring(0,lastIndex));
+                        file.setExtension(f.getName().substring(lastIndex+1));
+                    }
+                    else {
+                        file.setName(f.getName());
+                        file.setExtension("");
+                    }
+
+
+
+                    file.setParent(parentEntity);
+                    parentEntity.getFiles().add(file);
+                }
+
+
+            }
+        }
+
+
+
+
+    }
+
     @Override
     public void run(String... args) throws Exception {
 
+        travelAndPersistWorkingDirectory();
+        /*
         User user = new User();
         user.setUsername("dima");
 
@@ -119,5 +212,7 @@ public class Initializer implements CommandLineRunner {
 
         projectRepository.save(project);
         projectRepository.save(project1);
+
+         */
     }
 }

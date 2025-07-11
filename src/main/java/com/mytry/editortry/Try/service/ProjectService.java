@@ -22,6 +22,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -47,6 +51,8 @@ public class ProjectService {
     private String disk_location;
 
 
+
+    // удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
     @Transactional
     public void deleteProject(Long id){
         if (!projectRepository.existsById(id)){
@@ -92,11 +98,9 @@ public class ProjectService {
 
 
 
-        /*
-        Манипуляции с файловой системой делаются после успешной транзакции. Если выпадает исключение - откатывается вся транзакция
-         */
 
-        //createDirectoryAtDisk(username, projectName);
+
+        createDirectoryAtDisk(username, projectName);
 
     }
 
@@ -126,9 +130,56 @@ public class ProjectService {
         return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
     }
 
-    public void deleteFile(String index){
+
+    @Transactional(rollbackOn = {IllegalArgumentException.class, NoSuchFileException.class, IOException.class})
+    public void deleteFile(String username, String projectName, String index) throws Exception{
+
+        // проверяем, существует ли проект, послче чего выполняем проверку - сравниваем корневые папки
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
+                ()-> new IllegalArgumentException("project doesn't exists")
+        );
+
+
+        Long id = Long.parseLong(index.split("_")[1]);
+
+        File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
+
+        // конструируем путь до файла
+        ArrayDeque<String> way = new ArrayDeque<>();
+        Directory parent = file.getParent();
+        if (parent==null){
+            throw new IllegalArgumentException("no parent directory");
+        }
+
+
+        Long parentId=-1L;
+        while (parent!=null){
+            parentId = parent.getId();
+            way.addFirst("/"+parent.getName());
+            parent = parent.getParent();
+
+        }
+        way.add("/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        way.forEach(sb::append);
+
+        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
+        System.out.println(fullPath);
+
+        if (!Objects.equals(parentId, project.getRoot().getId())){
+            throw new IllegalArgumentException("Invalid file path");
+        }
+
+        fileRepository.delete(file);
+
+
+        Files.delete(Paths.get(fullPath));
+
+
 
     }
+
+
 
 
     @Transactional(rollbackOn = IllegalArgumentException.class)
@@ -165,6 +216,68 @@ public class ProjectService {
 
 
     }
+
+    @Transactional(rollbackOn = IllegalArgumentException.class)
+    public void createFile(String username, String projectName, String index, String suggestion){
+
+        String props[] = suggestion.split("\\.");
+        String filename = props[0];
+        String extension = props[1];
+
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
+                .orElseThrow(ProjectNotFoundException::new);
+
+        String fullPath = disk_location+"/"+username+"/projects/";
+        Directory parent = null;
+
+        if (index.equals("basic_root")){
+            // работаем с корневой папкой проекта
+            fullPath = fullPath+projectName+"/";
+            parent = project.getRoot();
+        }
+
+        else {
+            Long id = Long.parseLong(index.split("_")[1]);
+            // наша цель - сгенерировать путь до директории
+            List<String> way = new ArrayList<>();
+
+
+
+            parent = generateWay(project.getRoot(), id, way);
+
+
+
+
+            if (parent == null){
+                throw new IllegalArgumentException();
+            }
+
+            StringBuilder stringBuilder = new StringBuilder(fullPath);
+
+            for (String s:way){
+                stringBuilder.append(s);
+                stringBuilder.append("/");
+            }
+            fullPath = stringBuilder.toString();
+        }
+
+        System.out.println(fullPath);
+        for (File file: parent.getFiles()){
+            if (file.getName().equals(filename)){
+                throw new IllegalArgumentException("not unique name for file");
+            }
+        }
+
+        
+        File toCreate = new File();
+        toCreate.setExtension(extension);
+        toCreate.setName(filename);
+        toCreate.setParent(parent);
+        parent.getFiles().add(toCreate);
+        fileRepository.save(toCreate);
+    }
+
+
 
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
