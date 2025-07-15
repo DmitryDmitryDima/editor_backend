@@ -4,16 +4,21 @@ package com.mytry.editortry.Try.service;
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
 import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
+import com.mytry.editortry.Try.dto.saga.FileDeletingInfo;
 import com.mytry.editortry.Try.exceptions.project.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
 
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
+import com.mytry.editortry.Try.model.saga.FileIdempotentProcess;
+import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
+import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
+import com.mytry.editortry.Try.utils.project.FileDeletingSaga;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,12 +27,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 public class ProjectService {
@@ -44,6 +44,14 @@ public class ProjectService {
 
     @Autowired
     private FileRepository fileRepository;
+
+    @Autowired
+    private FileIdempotentProcessRepository fileIdempotentProcessRepository;
+
+
+    // сага сценарии - сценарии, требующие обращения сразу к двум нестабильным сервисам
+    @Autowired
+    private FileDeletingSaga fileDeletingSaga;
 
 
 
@@ -145,6 +153,13 @@ public class ProjectService {
         // извлекаем сущность файла из базы данных
         File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
 
+
+
+
+
+
+
+
         // конструируем путь до файла
         ArrayDeque<String> way = new ArrayDeque<>();
         Directory parent = file.getParent();
@@ -175,41 +190,55 @@ public class ProjectService {
         }
 
 
+
+
         /*
         тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
-
-        1) Генерируем UUID для переименования
-        2) Производим попытку переименования файла на диске.
-         Компенсация - метод возвращает ошибку
-        3) Сохраняем новое имя и статус для сущности в бд.
-         Компенсация - создание compensation_query с кодом ошибки 'file_db_rename_before_removing_error'
-         Запись содержит в себе следующую инфу - id файла в бд, новое имя
-         Обработчик пробует переименовать запись в бд, в случае успеха совершает шаги ниже.
-
-        4) Пробуем удалить файл с диска
-          Компенсация - создание compensation_query с кодом ошибки 'file_disk_remove_error'
-          Запись содержит в седе следующую инфу - путь к файлу (с новым именем), id файла в бд
-          Обработчик пробует стереть файл, после чего реализует шаг 5
-        5) Пробуем окончательно удалить файл из БД
-           Компенсация - создание compensation_query с кодом ошибки 'file_db_removing_error'
-           Запись содержит в себе id файла в бд
-           Обработчик пробует стереть файл из бд
-
-
-           таким образом, каждый из верхних шагов может продолжать алгоритм с той точки, где произошла остановка
-           Соответствующим образом каждый из обработчиков может генерировать compensation_query при переходе на следующий шаг
-           Осталось придумать, как сделать цепочку решений более элегантной, в ООП стиле
-         */
+        */
 
 
         /*
-        ниже - старая логика
+        ! проверка на идемпотентность - гарантируем, что не существует параллельно идущего процесса, связанного с изменением сущности
+        если процесса нет - пытаемся создать новый. Это своего рода блокировка файла
          */
 
-        fileRepository.delete(file);
+        if (fileIdempotentProcessRepository.existsById(id)){
+            throw new IllegalArgumentException("some issues with this file. We are already dealing with it");
+        }
+
+        else {
+            FileIdempotentProcess fileIdempotentProcess = new FileIdempotentProcess();
+            fileIdempotentProcess.setId(id);
+            fileIdempotentProcessRepository.save(fileIdempotentProcess);
+        }
 
 
-        Files.delete(Paths.get(fullPath));
+        /*
+        Запускаем сагу
+        Неудача в стартовом методе не запускает дальнейших шагов
+         */
+
+        fileDeletingSaga.db_status_change(file);
+
+
+        // в случае ошибки дальше код не пойдет
+        // код ниже обрабатывает ошибки внутри себя, генерируя компенсации
+        FileDeletingInfo info = new FileDeletingInfo();
+        info.setPath(fullPath);
+        info.setId(file.getId());
+        fileDeletingSaga.disk_rename(info);
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -480,18 +509,22 @@ public class ProjectService {
 
         if (directory.getFiles()!=null){
             for (File file:directory.getFiles()){
-                String index = "file_"+file.getId();
-                FlatTreeMember fileMember = new FlatTreeMember();
-                fileMember.setIndex(index);
-                fileMember.setData(file.getName()+"."+file.getExtension());
-                fileMember.setFolder(false);
-                fileMember.setCanMove(true);
-                fileMember.setCanRename(true);
+                // проверяем статус на случай, если какая-то операция над файлом "зависла"
+                if (file.getStatus()== FileStatus.AVAILABLE){
+                    String index = "file_"+file.getId();
+                    FlatTreeMember fileMember = new FlatTreeMember();
+                    fileMember.setIndex(index);
+                    fileMember.setData(file.getName()+"."+file.getExtension());
+                    fileMember.setFolder(false);
+                    fileMember.setCanMove(true);
+                    fileMember.setCanRename(true);
 
-                directoryMember.getChildren().add(index);
+                    directoryMember.getChildren().add(index);
 
 
-                flatTree.put(index, fileMember);
+                    flatTree.put(index, fileMember);
+                }
+
 
 
 

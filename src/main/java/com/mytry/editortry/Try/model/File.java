@@ -1,6 +1,7 @@
 package com.mytry.editortry.Try.model;
 
 
+import com.mytry.editortry.Try.model.state.FileStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,10 @@ public class File {
 
     @Column
     private String extension;
+
+    // статус файла
+    @Enumerated(EnumType.STRING)
+    private FileStatus status = FileStatus.AVAILABLE;
 
 
 
