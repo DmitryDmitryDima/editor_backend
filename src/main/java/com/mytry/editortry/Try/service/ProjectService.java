@@ -139,7 +139,7 @@ public class ProjectService {
     }
 
 
-    @Transactional(rollbackOn = {IllegalArgumentException.class})
+    //@Transactional(rollbackOn = {IllegalArgumentException.class})
     public void deleteFile(String username, String projectName, String index) throws Exception{
 
         // проверяем, существует ли проект
@@ -210,6 +210,7 @@ public class ProjectService {
             FileIdempotentProcess fileIdempotentProcess = new FileIdempotentProcess();
             fileIdempotentProcess.setId(id);
             fileIdempotentProcessRepository.save(fileIdempotentProcess);
+
         }
 
 

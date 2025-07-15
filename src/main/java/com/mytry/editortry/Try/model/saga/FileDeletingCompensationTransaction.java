@@ -1,8 +1,6 @@
 package com.mytry.editortry.Try.model.saga;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -14,6 +12,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class FileDeletingCompensationTransaction {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long file_id;
@@ -27,7 +26,8 @@ public class FileDeletingCompensationTransaction {
     private String step;
 
     // количество retry'ев
-    private Long attempts;
+
+    private Long attempts = 0L;
 
 
 }

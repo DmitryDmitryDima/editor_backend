@@ -43,12 +43,18 @@ public class FileDeletingSaga {
        file.setStatus(FileStatus.DELETING);
 
        try {
+
+
+
             fileRepository.save(file);
 
        }
        catch (RuntimeException runtimeException){
+
+
            try {
                fileIdempotentProcessRepository.deleteById(file.getId());
+
            }
            catch (RuntimeException e){
                // оч редкий сценарий - если отвалилась база процессов
@@ -118,6 +124,8 @@ public class FileDeletingSaga {
 
        try {
            Files.delete(Paths.get(info.getPath()));
+
+           // todo тестируем зачистку процесса - работает
            db_process_delete(info);
        }
        catch (Exception e){
