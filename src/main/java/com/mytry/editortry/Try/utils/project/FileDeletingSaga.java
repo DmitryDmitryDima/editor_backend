@@ -9,8 +9,10 @@ import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.saga.FileDeletingCompensationTransactionRepository;
 import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -35,6 +37,9 @@ public class FileDeletingSaga {
 
 
    // точка входа в сагу - ошибка в данном методе не запускает цепочки вниз
+
+   // метод set уже меняет состояние ! - > особенность работы hibernate, который хранит все в памяти
+    @Transactional(rollbackOn = Exception.class)
    public void db_status_change(File file) throws Exception{
 
 
@@ -45,31 +50,46 @@ public class FileDeletingSaga {
        try {
 
 
-
-            fileRepository.save(file);
+           //throw new RuntimeException("suka");
+           fileRepository.save(file);
 
        }
        catch (RuntimeException runtimeException){
 
 
            try {
-               fileIdempotentProcessRepository.deleteById(file.getId());
+
+               // освобождаем файл в отдельной транзакции
+               delete_file_idempotent_process(file.getId());
 
            }
            catch (RuntimeException e){
-               // оч редкий сценарий - если отвалилась база процессов
-               FileDeletingCompensationTransaction fileDeletingCompensationTransaction = new FileDeletingCompensationTransaction();
-               fileDeletingCompensationTransaction.setFile_id(file.getId());
-               fileDeletingCompensationTransaction.setStep(FileDeletingSagaStep.DB_STATUS_CHANGE.name());
-               fileDeletingCompensationTransactionRepository.save(fileDeletingCompensationTransaction);
+               idempotent_process_create_compensation(file.getId());
            }
 
            throw new IllegalArgumentException("now we can't remove this file. Try later");
        }
 
-
-
    }
+
+   // вызов в пределах transactional создаст отдельную транзакцию
+   @Transactional(Transactional.TxType.REQUIRES_NEW)
+   private void delete_file_idempotent_process(long id){
+        fileIdempotentProcessRepository.deleteById(id);
+   }
+
+   @Transactional(Transactional.TxType.REQUIRES_NEW)
+   private void idempotent_process_create_compensation(long id){
+       // оч редкий сценарий - если отвалилась база процессов
+       FileDeletingCompensationTransaction fileDeletingCompensationTransaction = new FileDeletingCompensationTransaction();
+       fileDeletingCompensationTransaction.setFile_id(id);
+       fileDeletingCompensationTransaction.setStep(FileDeletingSagaStep.DB_STATUS_CHANGE.name());
+       fileDeletingCompensationTransactionRepository.save(fileDeletingCompensationTransaction);
+
+       // todo подумай, что будет, если отвалится база компенсаций
+   }
+
+
 
 
    public void disk_rename(FileDeletingInfo info){

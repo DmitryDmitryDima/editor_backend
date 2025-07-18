@@ -5,6 +5,7 @@ import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
+import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
@@ -127,6 +128,15 @@ public class Initializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
 
         travelAndPersistWorkingDirectory();
+        /*
+        File file = new File();
+
+        file.setExtension("java");
+        file.setName("govno");
+        file.setStatus(FileStatus.DELETING);
+        fileRepository.save(file);
+
+         */
         /*
         User user = new User();
         user.setUsername("dima");
