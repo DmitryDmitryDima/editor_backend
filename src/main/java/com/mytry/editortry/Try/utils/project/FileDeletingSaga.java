@@ -9,9 +9,11 @@ import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.saga.FileDeletingCompensationTransactionRepository;
 import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
+import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.file.Files;
@@ -21,8 +23,19 @@ import java.util.UUID;
 
 
 
-// ООП репрезентация для саги удаления файла - компонент связан с сервисом
-@Component
+// ООП репрезентация для саги удаления файла
+
+/*
+TODO переписываем сагу так, чтобы каждый шаг содержал в себе только одну бд операцию !!!
+Создаем специальный сервис, принимающий заявки на сохранение компенсаций - CompensationTransactionsAssistant
+Данный сервис принимает заявку на сохранение компенсации, после чего  записывет ее в таблицу.
+Если происходит ошибка - ждет, пока оживет база данных и повторяет вновь. При достижении некоторого числа попыток пишет лог в файл
+Сохраненная транзакция обрабатывается фоново CompensationTransactionManager, который по номеру шагу восстанавливает цепочку саги
+Если происходит ошибка в менеджере, то посылается заявка (event) на обновление числа попыток в транзакционной записи
+Если ошибки нет - посылается заявка на удаление транзакции из бд.
+ТАКИМ ОБРАЗОМ - ОСНОВНОЙ ПРИНЦИП - АТОМАРНОСТЬ ВЕЗДЕ
+ */
+@Service
 public class FileDeletingSaga {
 
     @Autowired
@@ -35,59 +48,22 @@ public class FileDeletingSaga {
     private FileIdempotentProcessRepository fileIdempotentProcessRepository;
 
 
+    // логи
+    @Autowired
+    private WebSocketLogger webSocketLogger;
+
+
 
    // точка входа в сагу - ошибка в данном методе не запускает цепочки вниз
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public void saga_start_db_status_change(File file) throws Exception{
+        throw new IllegalArgumentException("what a fuck");
+        //file.setStatus(FileStatus.DELETING);
+        //fileRepository.save(file);
 
-   // метод set уже меняет состояние ! - > особенность работы hibernate, который хранит все в памяти
-    @Transactional(rollbackOn = Exception.class)
-   public void db_status_change(File file) throws Exception{
-
-
-
-
-       file.setStatus(FileStatus.DELETING);
-
-       try {
+    }
 
 
-           //throw new RuntimeException("suka");
-           fileRepository.save(file);
-
-       }
-       catch (RuntimeException runtimeException){
-
-
-           try {
-
-               // освобождаем файл в отдельной транзакции
-               delete_file_idempotent_process(file.getId());
-
-           }
-           catch (RuntimeException e){
-               idempotent_process_create_compensation(file.getId());
-           }
-
-           throw new IllegalArgumentException("now we can't remove this file. Try later");
-       }
-
-   }
-
-   // вызов в пределах transactional создаст отдельную транзакцию
-   @Transactional(Transactional.TxType.REQUIRES_NEW)
-   private void delete_file_idempotent_process(long id){
-        fileIdempotentProcessRepository.deleteById(id);
-   }
-
-   @Transactional(Transactional.TxType.REQUIRES_NEW)
-   private void idempotent_process_create_compensation(long id){
-       // оч редкий сценарий - если отвалилась база процессов
-       FileDeletingCompensationTransaction fileDeletingCompensationTransaction = new FileDeletingCompensationTransaction();
-       fileDeletingCompensationTransaction.setFile_id(id);
-       fileDeletingCompensationTransaction.setStep(FileDeletingSagaStep.DB_STATUS_CHANGE.name());
-       fileDeletingCompensationTransactionRepository.save(fileDeletingCompensationTransaction);
-
-       // todo подумай, что будет, если отвалится база компенсаций
-   }
 
 
 
@@ -156,6 +132,7 @@ public class FileDeletingSaga {
 
    }
 
+   @Transactional(Transactional.TxType.REQUIRES_NEW)
    public void db_process_delete(FileDeletingInfo info){
         try {
             fileIdempotentProcessRepository.deleteById(info.getId());

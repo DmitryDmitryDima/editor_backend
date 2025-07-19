@@ -2,7 +2,7 @@ package com.mytry.editortry.Try.model.state;
 
 public enum FileDeletingSagaStep {
 
-    DB_STATUS_CHANGE, DISK_RENAME, DB_DELETE, DISK_DELETE, DB_PROCESS_DELETE
+    DISK_RENAME, DB_DELETE, DISK_DELETE, DB_PROCESS_DELETE
 
 
     /*

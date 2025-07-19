@@ -19,6 +19,7 @@ import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
 import com.mytry.editortry.Try.utils.project.FileDeletingSaga;
+import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,10 @@ public class ProjectService {
     // сага сценарии - сценарии, требующие обращения сразу к двум нестабильным сервисам
     @Autowired
     private FileDeletingSaga fileDeletingSaga;
+
+    // логгер
+    @Autowired
+    private WebSocketLogger webSocketLogger;
 
 
 
@@ -203,6 +208,7 @@ public class ProjectService {
          */
 
         if (fileIdempotentProcessRepository.existsById(id)){
+            webSocketLogger.log("already dealing with file");
             throw new IllegalArgumentException("some issues with this file. We are already dealing with it");
         }
 
@@ -214,15 +220,39 @@ public class ProjectService {
         }
 
 
+        // ЗАПУСК САГИ НАЧИНАЕТСЯ ТУТ
+
+
+
+
         /*
-        Запускаем сагу
-        Неудача в стартовом методе не запускает дальнейших шагов
-         */
-
-        fileDeletingSaga.db_status_change(file);
 
 
-        // в случае ошибки дальше код не пойдет
+        try {
+            fileDeletingSaga.saga_start_db_status_change(file);
+        }
+        catch (Exception e){
+            try {
+                FileDeletingInfo deletingInfo = new FileDeletingInfo();
+                deletingInfo.setId(file.getId());
+                fileDeletingSaga.db_process_delete(deletingInfo);
+            }
+            catch (Exception exception){
+                throw new IllegalArgumentException("file deleting is unavailable now. Try later");
+            }
+
+            throw new IllegalArgumentException("file deleting is unavailable now. Try later");
+
+
+
+        }
+
+
+        // если ошибки нет, то запускается основное тело саги
+        webSocketLogger.log("main saga start");
+
+
+
         // код ниже обрабатывает ошибки внутри себя, генерируя компенсации
         FileDeletingInfo info = new FileDeletingInfo();
         info.setPath(fullPath);
@@ -232,6 +262,8 @@ public class ProjectService {
 
 
 
+
+         */
 
 
 
