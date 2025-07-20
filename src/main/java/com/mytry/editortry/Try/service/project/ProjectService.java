@@ -59,15 +59,12 @@ public class ProjectService {
     private String disk_location;
 
 
+    // загрузка дерева проекта
+    public ProjectDTO loadProjectByUsernameAndName(String username, String name){
 
-    // удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
-    @Transactional
-    public void deleteProject(Long id){
-        if (!projectRepository.existsById(id)){
-            throw new EntityNotFoundException("no found");
-        }
-        projectRepository.deleteById(id);
+        return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
     }
+
 
 
     // создание нового проекта с директорией
@@ -105,15 +102,7 @@ public class ProjectService {
 
 
 
-
-
-
-        createDirectoryAtDisk(username, projectName);
-
-    }
-
-
-    private void createDirectoryAtDisk(String username, String projectName) throws IllegalArgumentException{
+        // сохранение директории на диске
         java.io.File dir = new java.io.File(disk_location+username+"/projects/"+projectName);
         System.out.println(dir.getAbsolutePath());
         if (!dir.exists()){
@@ -127,23 +116,92 @@ public class ProjectService {
             throw new IllegalArgumentException("directory already exists");
         }
 
+
+    }
+
+    // удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
+    @Transactional
+    public void deleteProject(Long id){
+        if (!projectRepository.existsById(id)){
+            throw new EntityNotFoundException("no found");
+        }
+        projectRepository.deleteById(id);
     }
 
 
 
+    // создание директории внутри проекта
 
-    // имя проекта - уникально в пределах одного пользователя
-    public ProjectDTO loadProjectByUsernameAndName(String username, String name){
+    @Transactional(rollbackOn = IllegalArgumentException.class)
+    public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
 
-        return mapTree(projectRepository.findByOwnerUsernameAndName(username, name).orElseThrow(ProjectNotFoundException::new));
+
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
+                .orElseThrow(ProjectNotFoundException::new);
+
+        String fullPath = disk_location+"/"+username+"/projects/";
+        Directory parent = null;
+
+        if (index.equals("basic_root")){
+            // работаем с корневой папкой проекта
+            fullPath = fullPath+projectName+"/"+suggestedDirectoryName;
+            parent = project.getRoot();
+        }
+
+        else {
+
+            Long id = Long.parseLong(index.split("_")[1]);
+            // наша цель - сгенерировать путь до директории
+            List<String> way = new ArrayList<>();
+
+
+
+            parent = generateWay(project.getRoot(), id, way);
+
+
+
+
+            if (parent == null){
+                throw new IllegalArgumentException();
+            }
+
+            StringBuilder stringBuilder = new StringBuilder(fullPath);
+
+            for (String s:way){
+                stringBuilder.append(s);
+                stringBuilder.append("/");
+            }
+            fullPath = stringBuilder+suggestedDirectoryName;
+        }
+
+        // мы сохраняем directory сущность, после чего в файловой системе создаем соответсвующую папку согласно fullPath
+
+        // проверяем уникальность имени
+
+
+        for (Directory d:parent.getChildren()){
+            if (d.getName().equals(suggestedDirectoryName)){
+                throw new IllegalArgumentException("not unique");
+            }
+        }
+        // пишем в базу
+        Directory toCreate = new Directory();
+        toCreate.setName(suggestedDirectoryName);
+        parent.getChildren().add(toCreate);
+        toCreate.setParent(parent);
+
+        directoryRepository.save(toCreate);
+
+
+
+        // пишем на диск
+
+
     }
 
 
 
-
-
-
-
+    // удаление директории внутри проекта - нужно собрать путь до проекта
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void deleteDirectory(String index){
         Long id = Long.parseLong(index.split("_")[1]);
@@ -169,9 +227,6 @@ public class ProjectService {
         while (!directoriesToDelete.isEmpty()){
             directoryRepository.delete(directoriesToDelete.removeFirst());
         }
-
-
-
 
 
     }
@@ -237,78 +292,67 @@ public class ProjectService {
     }
 
 
-
+    // удаление файла в проекте
     @Transactional(rollbackOn = IllegalArgumentException.class)
-    public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
+    public void deleteFile(String username, String projectName, String index) throws Exception{
+
+        // проверяем, существует ли проект
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
+                ()-> new IllegalArgumentException("project doesn't exists")
+        );
+
+        // извлекаем id файла, полученный с запроса
+        Long id = Long.parseLong(index.split("_")[1]);
+
+        // извлекаем сущность файла из базы данных
+        File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
 
 
-        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
-                .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location+"/"+username+"/projects/";
-        Directory parent = null;
 
-        if (index.equals("basic_root")){
-            // работаем с корневой папкой проекта
-            fullPath = fullPath+projectName+"/"+suggestedDirectoryName;
-            parent = project.getRoot();
+        // конструируем путь до файла
+        ArrayDeque<String> way = new ArrayDeque<>();
+        Directory parent = file.getParent();
+
+        // файл не может быть "бесхозным"
+        if (parent==null){
+            throw new IllegalArgumentException("no parent directory");
         }
 
-        else {
+        // начиная с файла, добираемся до корневой папки
+        Long parentId=-1L;
+        while (parent!=null){
+            parentId = parent.getId();
+            way.addFirst("/"+parent.getName());
+            parent = parent.getParent();
 
-            Long id = Long.parseLong(index.split("_")[1]);
-            // наша цель - сгенерировать путь до директории
-            List<String> way = new ArrayList<>();
+        }
+        way.add("/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        way.forEach(sb::append);
+
+        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
 
 
-
-            parent = generateWay(project.getRoot(), id, way);
-
-
-
-
-            if (parent == null){
-                throw new IllegalArgumentException();
-            }
-
-            StringBuilder stringBuilder = new StringBuilder(fullPath);
-
-            for (String s:way){
-                stringBuilder.append(s);
-                stringBuilder.append("/");
-            }
-            fullPath = stringBuilder+suggestedDirectoryName;
+        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
+        if (!Objects.equals(parentId, project.getRoot().getId())){
+            throw new IllegalArgumentException("Invalid file path");
         }
 
-        // мы сохраняем directory сущность, после чего в файловой системе создаем соответсвующую папку согласно fullPath
-
-        // проверяем уникальность имени
 
 
-        for (Directory d:parent.getChildren()){
-            if (d.getName().equals(suggestedDirectoryName)){
-                throw new IllegalArgumentException("not unique");
-            }
-        }
-        // пишем в базу
-        Directory toCreate = new Directory();
-        toCreate.setName(suggestedDirectoryName);
-        parent.getChildren().add(toCreate);
-        toCreate.setParent(parent);
+        //тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
 
-        directoryRepository.save(toCreate);
-
-
-
-
-
-
-
-
+        fileRepository.delete(file);
+        Files.delete(Path.of(fullPath));
 
 
 
     }
+
+
+
+
 
     // собираем ссылки на все поддериктории и файлы при удалении
 
@@ -449,8 +493,7 @@ public class ProjectService {
 
     private ProjectDTO mapTree(Project project){
 
-        //System.out.println(project.getRoot().getChildren()+" children"); // пустой список
-        //System.out.println(project.getRoot().getParent()+" parent"); // null
+
 
 
         Directory root = project.getRoot();
@@ -495,131 +538,7 @@ public class ProjectService {
 
     }
 
-    @Transactional
-    public void deleteFile(String username, String projectName, String index) throws Exception{
 
-        // проверяем, существует ли проект
-        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
-                ()-> new IllegalArgumentException("project doesn't exists")
-        );
-
-        // извлекаем id файла, полученный с запроса
-        Long id = Long.parseLong(index.split("_")[1]);
-
-        // извлекаем сущность файла из базы данных
-        File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
-
-
-
-
-
-
-
-
-        // конструируем путь до файла
-        ArrayDeque<String> way = new ArrayDeque<>();
-        Directory parent = file.getParent();
-
-        // файл не может быть "бесхозным"
-        if (parent==null){
-            throw new IllegalArgumentException("no parent directory");
-        }
-
-        // начиная с файла, добираемся до корневой папки
-        Long parentId=-1L;
-        while (parent!=null){
-            parentId = parent.getId();
-            way.addFirst("/"+parent.getName());
-            parent = parent.getParent();
-
-        }
-        way.add("/");
-        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
-        way.forEach(sb::append);
-
-        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
-
-
-        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
-        if (!Objects.equals(parentId, project.getRoot().getId())){
-            throw new IllegalArgumentException("Invalid file path");
-        }
-
-
-
-        //тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
-
-        fileRepository.delete(file);
-        Files.delete(Path.of(fullPath));
-
-
-
-        // todo система компенсаций (сага - ассистент компенсаций - менеджер компенсаций) - заморожено
-
-
-
-        /*
-
-
-        //! Проверка на идемпотентность - гарантируем, что не существует параллельно идущего процесса, связанного с изменением сущности
-        //если процесса нет - пытаемся создать новый. Это своего рода блокировка файла
-
-
-        if (fileIdempotentProcessRepository.existsById(id)){
-            webSocketLogger.log("already dealing with file");
-            throw new IllegalArgumentException("some issues with this file. We are already dealing with it");
-        }
-
-        else {
-            FileIdempotentProcess fileIdempotentProcess = new FileIdempotentProcess();
-            fileIdempotentProcess.setId(id);
-            fileIdempotentProcessRepository.save(fileIdempotentProcess);
-
-        }
-
-
-        // ЗАПУСК САГИ НАЧИНАЕТСЯ ТУТ
-
-
-
-
-
-
-
-        try {
-            fileDeletingSaga.saga_start_db_status_change(file);
-        }
-        catch (Exception e){
-            try {
-                FileDeletingInfo deletingInfo = new FileDeletingInfo();
-                deletingInfo.setId(file.getId());
-                fileDeletingSaga.db_process_delete(deletingInfo);
-            }
-            catch (Exception exception){
-                throw new IllegalArgumentException("file deleting is unavailable now. Try later");
-            }
-
-            throw new IllegalArgumentException("file deleting is unavailable now. Try later");
-
-
-
-        }
-
-
-        // если ошибки нет, то запускается основное тело саги
-        webSocketLogger.log("main saga start");
-
-
-
-        // код ниже обрабатывает ошибки внутри себя, генерируя компенсации
-        FileDeletingInfo info = new FileDeletingInfo();
-        info.setPath(fullPath);
-        info.setId(file.getId());
-        fileDeletingSaga.disk_rename(info);
-
-         */
-
-    }
 
 
 
