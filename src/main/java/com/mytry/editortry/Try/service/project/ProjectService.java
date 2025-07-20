@@ -151,7 +151,7 @@ public class ProjectService {
         else {
 
             Long id = Long.parseLong(index.split("_")[1]);
-            // наша цель - сгенерировать путь до директории
+            // наша цель - сгенерировать путь до директории, в которой мы будем создавать новую директорию
             List<String> way = new ArrayList<>();
 
 
@@ -197,17 +197,39 @@ public class ProjectService {
         // пишем на диск
 
 
+        // сохранение директории на диске
+        java.io.File dir = new java.io.File(fullPath);
+        System.out.println(dir.getAbsolutePath());
+        if (!dir.exists()){
+            boolean result  = dir.mkdir();
+            if(!result){
+                throw new IllegalArgumentException("directory didn't created");
+            }
+        }
+
+        else {
+            throw new IllegalArgumentException("directory already exists");
+        }
+
+
+
+
     }
 
 
 
-    // удаление директории внутри проекта - нужно собрать путь до проекта
+    // удаление директории внутри проекта - нужно собрать путь до проекта и проверить, принадлежит ли директория проекту
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void deleteDirectory(String index){
+
         Long id = Long.parseLong(index.split("_")[1]);
 
 
         Directory directory = directoryRepository.findById(id).orElseThrow(IllegalArgumentException::new);
+
+
+
+
         if (directory.getParent()==null){
             throw new IllegalArgumentException("this is root");
         }
@@ -217,8 +239,7 @@ public class ProjectService {
 
         collectChildren(directory, directoriesToDelete, filesToDelete);
 
-        System.out.println(directoriesToDelete);
-        System.out.println(filesToDelete);
+
 
         while(!filesToDelete.isEmpty()){
             fileRepository.delete(filesToDelete.removeFirst());
@@ -227,6 +248,8 @@ public class ProjectService {
         while (!directoriesToDelete.isEmpty()){
             directoryRepository.delete(directoriesToDelete.removeFirst());
         }
+
+
 
 
     }
@@ -354,7 +377,7 @@ public class ProjectService {
 
 
 
-    // собираем ссылки на все поддериктории и файлы при удалении
+    // собираем ссылки на все поддириктории и файлы при удалении
 
     private void collectChildren(Directory directory, ArrayDeque<Directory> directories, ArrayDeque<File> files){
 
@@ -366,6 +389,9 @@ public class ProjectService {
 
         directories.add(directory);
     }
+
+
+
 
     private Directory generateWay(Directory candidate,
                                   Long directoryId,
@@ -409,6 +435,37 @@ public class ProjectService {
 
 
 
+
+
+
+
+
+    // генерируем репрезентацию проекта для сервера (дерева) с помощью traverse
+
+    private ProjectDTO mapTree(Project project){
+
+
+        Directory root = project.getRoot();
+
+        DirectoryDTO rootDTO = new DirectoryDTO();
+
+        Map<String, FlatTreeMember> flatTree = new HashMap<>(); // плоская структура
+
+
+        traverse(root, rootDTO, null, flatTree);
+
+
+        ProjectDTO projectDTO = new ProjectDTO();
+        projectDTO.setName(project.getName());
+        projectDTO.setId(project.getId());
+
+        projectDTO.setRoot(rootDTO);
+        projectDTO.setFlatTree(flatTree);
+
+
+        return projectDTO;
+
+    }
 
     // проходим по директория deep-first-traversal, готовя dto
 
@@ -470,7 +527,6 @@ public class ProjectService {
         }
 
 
-
         if (directory.getChildren().isEmpty()) {
             dto.setChildren(new ArrayList<>());
             //System.out.println("end reached");
@@ -488,54 +544,6 @@ public class ProjectService {
         }
 
         flatTree.put(directoryMember.getIndex(), directoryMember);
-    }
-
-
-    private ProjectDTO mapTree(Project project){
-
-
-
-
-        Directory root = project.getRoot();
-
-        DirectoryDTO rootDTO = new DirectoryDTO();
-
-        Map<String, FlatTreeMember> flatTree = new HashMap<>(); // плоская структура
-
-
-        traverse(root, rootDTO, null, flatTree);
-
-
-
-
-
-        ProjectDTO projectDTO = new ProjectDTO();
-        projectDTO.setName(project.getName());
-        projectDTO.setId(project.getId());
-
-        projectDTO.setRoot(rootDTO);
-        projectDTO.setFlatTree(flatTree);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        return projectDTO;
-
-
-
-
-
     }
 
 
