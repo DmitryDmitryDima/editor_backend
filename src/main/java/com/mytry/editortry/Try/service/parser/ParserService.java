@@ -1,29 +1,13 @@
-package com.mytry.editortry.Try.service;
+package com.mytry.editortry.Try.service.parser;
 
 
-import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
-import com.github.javaparser.resolution.types.ResolvedType;
-import com.github.javaparser.symbolsolver.JavaSymbolSolver;
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
-import com.mytry.editortry.Try.utils.parser.ParserUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 
 
 @Service

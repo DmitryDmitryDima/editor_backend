@@ -10,7 +10,7 @@ import com.mytry.editortry.Try.dto.run.RunAnswer;
 import com.mytry.editortry.Try.dto.run.RunRequest;
 import com.mytry.editortry.Try.service.CompilerService;
 import com.mytry.editortry.Try.service.AIService;
-import com.mytry.editortry.Try.service.ParserService;
+import com.mytry.editortry.Try.service.parser.ParserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,8 +18,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 
 @RestController

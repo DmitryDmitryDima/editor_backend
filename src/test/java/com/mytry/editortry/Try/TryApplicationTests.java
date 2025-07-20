@@ -1,11 +1,8 @@
 package com.mytry.editortry.Try;
 
-import com.mytry.editortry.Try.dto.lm.LMResponse;
-import com.mytry.editortry.Try.dto.run.RunRequest;
 import com.mytry.editortry.Try.service.CompilerService;
 import com.mytry.editortry.Try.service.AIService;
-import com.mytry.editortry.Try.service.ParserService;
-import com.mytry.editortry.Try.utils.ai.Prompts;
+import com.mytry.editortry.Try.service.parser.ParserService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

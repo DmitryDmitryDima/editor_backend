@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.service;
+package com.mytry.editortry.Try.service.project;
 
 
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
@@ -18,7 +18,6 @@ import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
-import com.mytry.editortry.Try.utils.project.FileDeletingSaga;
 import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -28,6 +27,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 @Service
@@ -46,13 +47,7 @@ public class ProjectService {
     @Autowired
     private FileRepository fileRepository;
 
-    @Autowired
-    private FileIdempotentProcessRepository fileIdempotentProcessRepository;
 
-
-    // сага сценарии - сценарии, требующие обращения сразу к двум нестабильным сервисам
-    @Autowired
-    private FileDeletingSaga fileDeletingSaga;
 
     // логгер
     @Autowired
@@ -144,138 +139,7 @@ public class ProjectService {
     }
 
 
-    //@Transactional(rollbackOn = {IllegalArgumentException.class})
-    public void deleteFile(String username, String projectName, String index) throws Exception{
 
-        // проверяем, существует ли проект
-        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
-                ()-> new IllegalArgumentException("project doesn't exists")
-        );
-
-        // извлекаем id файла, полученный с запроса
-        Long id = Long.parseLong(index.split("_")[1]);
-
-        // извлекаем сущность файла из базы данных
-        File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
-
-
-
-
-
-
-
-
-        // конструируем путь до файла
-        ArrayDeque<String> way = new ArrayDeque<>();
-        Directory parent = file.getParent();
-
-        // файл не может быть "бесхозным"
-        if (parent==null){
-            throw new IllegalArgumentException("no parent directory");
-        }
-
-        // начиная с файла, добираемся до корневой папки
-        Long parentId=-1L;
-        while (parent!=null){
-            parentId = parent.getId();
-            way.addFirst("/"+parent.getName());
-            parent = parent.getParent();
-
-        }
-        way.add("/");
-        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
-        way.forEach(sb::append);
-
-        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
-
-
-        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
-        if (!Objects.equals(parentId, project.getRoot().getId())){
-            throw new IllegalArgumentException("Invalid file path");
-        }
-
-
-
-
-        /*
-        тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
-        */
-
-
-        /*
-        ! проверка на идемпотентность - гарантируем, что не существует параллельно идущего процесса, связанного с изменением сущности
-        если процесса нет - пытаемся создать новый. Это своего рода блокировка файла
-         */
-
-        if (fileIdempotentProcessRepository.existsById(id)){
-            webSocketLogger.log("already dealing with file");
-            throw new IllegalArgumentException("some issues with this file. We are already dealing with it");
-        }
-
-        else {
-            FileIdempotentProcess fileIdempotentProcess = new FileIdempotentProcess();
-            fileIdempotentProcess.setId(id);
-            fileIdempotentProcessRepository.save(fileIdempotentProcess);
-
-        }
-
-
-        // ЗАПУСК САГИ НАЧИНАЕТСЯ ТУТ
-
-
-
-
-        /*
-
-
-        try {
-            fileDeletingSaga.saga_start_db_status_change(file);
-        }
-        catch (Exception e){
-            try {
-                FileDeletingInfo deletingInfo = new FileDeletingInfo();
-                deletingInfo.setId(file.getId());
-                fileDeletingSaga.db_process_delete(deletingInfo);
-            }
-            catch (Exception exception){
-                throw new IllegalArgumentException("file deleting is unavailable now. Try later");
-            }
-
-            throw new IllegalArgumentException("file deleting is unavailable now. Try later");
-
-
-
-        }
-
-
-        // если ошибки нет, то запускается основное тело саги
-        webSocketLogger.log("main saga start");
-
-
-
-        // код ниже обрабатывает ошибки внутри себя, генерируя компенсации
-        FileDeletingInfo info = new FileDeletingInfo();
-        info.setPath(fullPath);
-        info.setId(file.getId());
-        fileDeletingSaga.disk_rename(info);
-
-
-
-
-
-         */
-
-
-
-
-
-
-
-
-
-
-
-    }
 
 
 
@@ -283,9 +147,6 @@ public class ProjectService {
     @Transactional(rollbackOn = IllegalArgumentException.class)
     public void deleteDirectory(String index){
         Long id = Long.parseLong(index.split("_")[1]);
-
-
-
 
 
         Directory directory = directoryRepository.findById(id).orElseThrow(IllegalArgumentException::new);
@@ -631,6 +492,132 @@ public class ProjectService {
 
 
 
+
+    }
+
+    @Transactional
+    public void deleteFile(String username, String projectName, String index) throws Exception{
+
+        // проверяем, существует ли проект
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
+                ()-> new IllegalArgumentException("project doesn't exists")
+        );
+
+        // извлекаем id файла, полученный с запроса
+        Long id = Long.parseLong(index.split("_")[1]);
+
+        // извлекаем сущность файла из базы данных
+        File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
+
+
+
+
+
+
+
+
+        // конструируем путь до файла
+        ArrayDeque<String> way = new ArrayDeque<>();
+        Directory parent = file.getParent();
+
+        // файл не может быть "бесхозным"
+        if (parent==null){
+            throw new IllegalArgumentException("no parent directory");
+        }
+
+        // начиная с файла, добираемся до корневой папки
+        Long parentId=-1L;
+        while (parent!=null){
+            parentId = parent.getId();
+            way.addFirst("/"+parent.getName());
+            parent = parent.getParent();
+
+        }
+        way.add("/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        way.forEach(sb::append);
+
+        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
+
+
+        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
+        if (!Objects.equals(parentId, project.getRoot().getId())){
+            throw new IllegalArgumentException("Invalid file path");
+        }
+
+
+
+        //тут все проверки выполнены - переходим к конкретным изменениям в бд и на диске
+
+        fileRepository.delete(file);
+        Files.delete(Path.of(fullPath));
+
+
+
+        // todo система компенсаций (сага - ассистент компенсаций - менеджер компенсаций) - заморожено
+
+
+
+        /*
+
+
+        //! Проверка на идемпотентность - гарантируем, что не существует параллельно идущего процесса, связанного с изменением сущности
+        //если процесса нет - пытаемся создать новый. Это своего рода блокировка файла
+
+
+        if (fileIdempotentProcessRepository.existsById(id)){
+            webSocketLogger.log("already dealing with file");
+            throw new IllegalArgumentException("some issues with this file. We are already dealing with it");
+        }
+
+        else {
+            FileIdempotentProcess fileIdempotentProcess = new FileIdempotentProcess();
+            fileIdempotentProcess.setId(id);
+            fileIdempotentProcessRepository.save(fileIdempotentProcess);
+
+        }
+
+
+        // ЗАПУСК САГИ НАЧИНАЕТСЯ ТУТ
+
+
+
+
+
+
+
+        try {
+            fileDeletingSaga.saga_start_db_status_change(file);
+        }
+        catch (Exception e){
+            try {
+                FileDeletingInfo deletingInfo = new FileDeletingInfo();
+                deletingInfo.setId(file.getId());
+                fileDeletingSaga.db_process_delete(deletingInfo);
+            }
+            catch (Exception exception){
+                throw new IllegalArgumentException("file deleting is unavailable now. Try later");
+            }
+
+            throw new IllegalArgumentException("file deleting is unavailable now. Try later");
+
+
+
+        }
+
+
+        // если ошибки нет, то запускается основное тело саги
+        webSocketLogger.log("main saga start");
+
+
+
+        // код ниже обрабатывает ошибки внутри себя, генерируя компенсации
+        FileDeletingInfo info = new FileDeletingInfo();
+        info.setPath(fullPath);
+        info.setId(file.getId());
+        fileDeletingSaga.disk_rename(info);
+
+         */
 
     }
 

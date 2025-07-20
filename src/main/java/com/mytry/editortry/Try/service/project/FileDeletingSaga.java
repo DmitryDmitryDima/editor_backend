@@ -1,20 +1,17 @@
-package com.mytry.editortry.Try.utils.project;
+package com.mytry.editortry.Try.service.project;
 
 
 import com.mytry.editortry.Try.dto.saga.FileDeletingInfo;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.saga.FileDeletingCompensationTransaction;
 import com.mytry.editortry.Try.model.state.FileDeletingSagaStep;
-import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.saga.FileDeletingCompensationTransactionRepository;
 import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
 import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
