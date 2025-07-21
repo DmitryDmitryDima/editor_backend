@@ -1,6 +1,6 @@
 package com.mytry.editortry.Try.api;
 
-import com.mytry.editortry.Try.dto.dashboard.DashboardAnswerFileDeletingSaga;
+import com.mytry.editortry.Try.dto.dashboard.DashboardAnswer;
 import com.mytry.editortry.Try.service.DashboardService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -19,12 +19,12 @@ public class DashboardAPI {
     private DashboardService dashboardService;
 
 
-    @GetMapping("/delete/files")
-    public ResponseEntity<DashboardAnswerFileDeletingSaga> deleteFile(){
+    @GetMapping("/dashboard")
+    public ResponseEntity<DashboardAnswer> statistics(){
 
 
 
 
-        return ResponseEntity.ok(dashboardService.fetchAllFileDeletingEntities());
+        return ResponseEntity.ok(dashboardService.fetchAllFileEntities());
     }
 }

@@ -4,20 +4,17 @@ package com.mytry.editortry.Try.service.project;
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
 import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
-import com.mytry.editortry.Try.dto.saga.FileDeletingInfo;
 import com.mytry.editortry.Try.exceptions.project.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
 
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
-import com.mytry.editortry.Try.model.saga.FileIdempotentProcess;
-import com.mytry.editortry.Try.model.state.FileStatus;
+import com.mytry.editortry.Try.model.enums.FileStatus;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
-import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
 import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -25,8 +22,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileSystemUtils;
 
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -68,7 +67,7 @@ public class ProjectService {
 
 
     // создание нового проекта с директорией
-    @Transactional(rollbackOn = IllegalArgumentException.class)
+    @Transactional(rollbackOn = Exception.class)
     public void createProject(String username, String projectName) throws IllegalArgumentException {
 
         /*
@@ -132,7 +131,7 @@ public class ProjectService {
 
     // создание директории внутри проекта
 
-    @Transactional(rollbackOn = IllegalArgumentException.class)
+    @Transactional(rollbackOn = Exception.class)
     public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
 
 
@@ -219,20 +218,55 @@ public class ProjectService {
 
 
     // удаление директории внутри проекта - нужно собрать путь до проекта и проверить, принадлежит ли директория проекту
-    @Transactional(rollbackOn = IllegalArgumentException.class)
-    public void deleteDirectory(String index){
+    @Transactional(rollbackOn = Exception.class)
+    public void deleteDirectory(String username, String projectName, String index)  {
 
+
+        // проверяем, существует ли проект
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
+                ()-> new IllegalArgumentException("project doesn't exists")
+        );
+
+        // извлекаем id директории, полученный с запроса
         Long id = Long.parseLong(index.split("_")[1]);
 
-
+        // извлекаем сущность директории из базы данных
         Directory directory = directoryRepository.findById(id).orElseThrow(IllegalArgumentException::new);
-
-
-
 
         if (directory.getParent()==null){
             throw new IllegalArgumentException("this is root");
         }
+
+
+
+
+        // конструируем путь до директории
+        ArrayDeque<String> way = new ArrayDeque<>();
+        Directory parent = directory.getParent();
+
+
+
+        // начиная с файла, добираемся до корневой папки
+        Long parentId=-1L;
+        while (parent!=null){
+            parentId = parent.getId();
+            way.addFirst("/"+parent.getName());
+            parent = parent.getParent();
+        }
+        way.add("/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        way.forEach(sb::append);
+
+        String fullPath = disk_location+sb+directory.getName()+"/";
+
+
+        // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
+        if (!Objects.equals(parentId, project.getRoot().getId())){
+            throw new IllegalArgumentException("Invalid file path");
+        }
+
+
+        // собираем все вложенные директории и файлы для удаления их из базы данных
 
         ArrayDeque<Directory> directoriesToDelete = new ArrayDeque<>();
         ArrayDeque<File> filesToDelete = new ArrayDeque<>();
@@ -251,11 +285,20 @@ public class ProjectService {
 
 
 
+        // удаление директории с диска происходит также рекурсивно - мы должны сначала удалить вложения,
+        // а потом их родителей. Просто так можно удалить только пустую папку
+        try {
+            FileSystemUtils.deleteRecursively(Path.of(fullPath));
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
 
     }
 
-    @Transactional(rollbackOn = IllegalArgumentException.class)
-    public void createFile(String username, String projectName, String index, String suggestion){
+    @Transactional(rollbackOn = Exception.class)
+    public void createFile(String username, String projectName, String index, String suggestion) throws Exception {
 
         String props[] = suggestion.split("\\.");
         String filename = props[0];
@@ -274,6 +317,7 @@ public class ProjectService {
         }
 
         else {
+            // извлекаем id директории, в которой мы планируем создать файл
             Long id = Long.parseLong(index.split("_")[1]);
             // наша цель - сгенерировать путь до директории
             List<String> way = new ArrayList<>();
@@ -295,7 +339,7 @@ public class ProjectService {
                 stringBuilder.append(s);
                 stringBuilder.append("/");
             }
-            fullPath = stringBuilder.toString();
+            fullPath = stringBuilder.toString(); //  "/.../directory/" format
         }
 
         System.out.println(fullPath);
@@ -312,11 +356,19 @@ public class ProjectService {
         toCreate.setParent(parent);
         parent.getFiles().add(toCreate);
         fileRepository.save(toCreate);
+
+        try{
+            Files.createFile(Path.of(fullPath+filename+"."+extension));
+        }
+        catch (Exception e){
+            webSocketLogger.log(e.getMessage());
+            throw new Exception(e.getMessage());
+        }
     }
 
 
     // удаление файла в проекте
-    @Transactional(rollbackOn = IllegalArgumentException.class)
+    @Transactional(rollbackOn = Exception.class)
     public void deleteFile(String username, String projectName, String index) throws Exception{
 
         // проверяем, существует ли проект
@@ -377,7 +429,7 @@ public class ProjectService {
 
 
 
-    // собираем ссылки на все поддириктории и файлы при удалении
+    // собираем ссылки на все поддиректории и файлы при удалении из базы данных - удаление происходит с нижних элементов (детей)
 
     private void collectChildren(Directory directory, ArrayDeque<Directory> directories, ArrayDeque<File> files){
 
@@ -392,7 +444,7 @@ public class ProjectService {
 
 
 
-
+    // генерируем ссылку от "кандидата" до искомого айди (сверху вниз)
     private Directory generateWay(Directory candidate,
                                   Long directoryId,
                                   List<String> way){

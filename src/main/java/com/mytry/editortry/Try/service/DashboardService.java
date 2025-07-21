@@ -1,14 +1,10 @@
 package com.mytry.editortry.Try.service;
 
-import com.mytry.editortry.Try.dto.dashboard.DashboardAnswerFileDeletingSaga;
+import com.mytry.editortry.Try.dto.dashboard.DashboardAnswer;
 import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.model.File;
-import com.mytry.editortry.Try.model.saga.FileDeletingCompensationTransaction;
-import com.mytry.editortry.Try.model.saga.FileIdempotentProcess;
-import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.FileRepository;
-import com.mytry.editortry.Try.repository.saga.FileDeletingCompensationTransactionRepository;
-import com.mytry.editortry.Try.repository.saga.FileIdempotentProcessRepository;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,26 +14,20 @@ import java.util.List;
 @Service
 public class DashboardService {
 
-    @Autowired
-    private FileDeletingCompensationTransactionRepository fileDeletingCompensationTransactionRepository;
 
-    @Autowired
-    private FileIdempotentProcessRepository fileIdempotentProcessRepository;
 
     @Autowired
     private FileRepository fileRepository;
 
 
 
-    public DashboardAnswerFileDeletingSaga fetchAllFileDeletingEntities(){
+    public DashboardAnswer fetchAllFileEntities(){
 
-        DashboardAnswerFileDeletingSaga dashboardAnswerFileDeletingSaga = new DashboardAnswerFileDeletingSaga();
+        DashboardAnswer dashboardAnswer = new DashboardAnswer();
 
-        List<FileDeletingCompensationTransaction> transactions = fileDeletingCompensationTransactionRepository.findAll();
 
-        List<FileIdempotentProcess> processes = fileIdempotentProcessRepository.findAll();
 
-        List<File> files = fileRepository.findByStatus(FileStatus.DELETING);
+        List<File> files = fileRepository.findAll();
 
 
         List<FlatTreeMember> flatTreeMembers = new ArrayList<>();
@@ -50,12 +40,10 @@ public class DashboardService {
         });
 
 
-        dashboardAnswerFileDeletingSaga.setFilesToDelete(flatTreeMembers);
-        dashboardAnswerFileDeletingSaga.setFileIdempotentProcesses(processes);
-        dashboardAnswerFileDeletingSaga.setFileDeletingCompensationTransactions(transactions);
+        dashboardAnswer.setFiles(flatTreeMembers);
 
 
-        return dashboardAnswerFileDeletingSaga;
+        return dashboardAnswer;
 
 
     }

@@ -40,8 +40,8 @@ public class ProjectsAPI {
             @PathVariable(name = "projectname") String projectname,
             @PathVariable(name = "username") String username,
             @PathVariable("index") String index,
-            @PathVariable("suggestion") String suggestion
-    ){
+            @PathVariable("suggestion") String suggestion) throws Exception {
+
         projectService.createFile(username, projectname, index, suggestion);
         return ResponseEntity.noContent().build();
     }
@@ -56,7 +56,7 @@ public class ProjectsAPI {
             @PathVariable("index") String index
     ){
 
-        projectService.deleteDirectory(index);
+        projectService.deleteDirectory(username, projectName,index);
 
         return ResponseEntity.noContent().build();
     }

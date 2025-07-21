@@ -5,7 +5,6 @@ import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.model.User;
-import com.mytry.editortry.Try.model.state.FileStatus;
 import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
@@ -16,7 +15,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class Initializer implements CommandLineRunner {

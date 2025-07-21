@@ -1,7 +1,7 @@
 package com.mytry.editortry.Try.model;
 
 
-import com.mytry.editortry.Try.model.state.FileStatus;
+import com.mytry.editortry.Try.model.enums.FileStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
