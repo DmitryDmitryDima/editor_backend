@@ -2,6 +2,8 @@ package com.mytry.editortry.Try.api;
 
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
+import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
+import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
 import com.mytry.editortry.Try.service.EditorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +19,7 @@ public class EditorAPI {
     @Autowired
     private EditorService editorService;
 
-
+    // читаем файл, создаем, при необходимости, кеш
     @PostMapping(value = "/readAndCache")
     public ResponseEntity<EditorFileReadAnswer> readAndCacheFile(
             @RequestBody EditorFileReadRequest request
@@ -26,6 +28,16 @@ public class EditorAPI {
 
         return ResponseEntity.ok(editorService.loadFile(request));
 
+    }
+
+
+
+    // сохраняем файл, пишем информацию в кеш, уведомляем все сессии, причастные к проекту
+    @PostMapping("/save")
+    public ResponseEntity<EditorFileSaveAnswer> save(@RequestBody EditorFileSaveRequest request){
+
+        System.out.println(request.getFull_path());
+        return ResponseEntity.ok(editorService.saveFile(request));
     }
 
 }

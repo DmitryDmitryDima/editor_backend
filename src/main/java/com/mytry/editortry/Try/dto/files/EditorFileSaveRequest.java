@@ -11,6 +11,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +22,10 @@ public class EditorFileSaveRequest {
 
     private Long file_id;
     private Long project_id;
+
+    private String full_path;
+
+    private Instant clientTime;
 
 
 

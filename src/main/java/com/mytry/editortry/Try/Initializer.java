@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.ArrayList;
 
 @Component
@@ -55,12 +56,15 @@ public class Initializer implements CommandLineRunner {
 
         for (java.io.File f:projects){
             if (f.isDirectory()){
+
                 Project project = new Project();
                 project.setName(f.getName());
                 project.setOwner(user);
+                project.setCreatedAt(Instant.now());
                 Directory root = new Directory();
                 project.setRoot(root);
                 root.setName(f.getName());
+                root.setCreatedAt(Instant.now());
 
 
                 prepareMyRoot(f, root);
@@ -88,6 +92,7 @@ public class Initializer implements CommandLineRunner {
                 if (f.isDirectory()){
                     Directory child = new Directory();
                     child.setName(f.getName());
+                    child.setCreatedAt(Instant.now());
                     parentEntity.getChildren().add(child);
                     child.setParent(parentEntity);
                     prepareMyRoot(f, child);
@@ -110,6 +115,8 @@ public class Initializer implements CommandLineRunner {
 
 
                     file.setParent(parentEntity);
+                    file.setCreatedAt(Instant.now());
+                    file.setUpdatedAt(Instant.now());
                     parentEntity.getFiles().add(file);
                 }
 

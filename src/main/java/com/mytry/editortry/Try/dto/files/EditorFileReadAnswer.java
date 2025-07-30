@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,7 +19,9 @@ public class EditorFileReadAnswer {
 
     private Long project_id;
 
-    // todo время обновления объекта
+
+
+    private Instant updatedAt;
 
 
 

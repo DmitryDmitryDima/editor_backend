@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "files")
 @Getter
@@ -26,9 +28,20 @@ public class File {
 
 
 
+
+
     // статус файла
     @Enumerated(EnumType.STRING)
     private FileStatus status = FileStatus.AVAILABLE;
+
+
+    // параметры времени
+
+    @Column
+    private Instant createdAt;
+
+    @Column
+    private Instant updatedAt;
 
 
 

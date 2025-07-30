@@ -4,7 +4,7 @@ package com.mytry.editortry.Try.service.project;
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
 import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
-import com.mytry.editortry.Try.exceptions.project.ProjectNotFoundException;
+import com.mytry.editortry.Try.exceptions.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
 
 import com.mytry.editortry.Try.model.File;
@@ -28,6 +28,7 @@ import org.springframework.util.FileSystemUtils;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.*;
 
 @Service
@@ -76,6 +77,7 @@ public class ProjectService {
 
         Project project = new Project();
         project.setName(projectName);
+        project.setCreatedAt(Instant.now());
 
         User user = userRepository
                 .findWithProjectsByUsername(username).orElseThrow(()->new UsernameNotFoundException("user doesn't exists"));
@@ -89,7 +91,7 @@ public class ProjectService {
 
         Directory root = new Directory();
         root.setName(projectName);
-
+        root.setCreatedAt(Instant.now());
         directoryRepository.save(root);
 
         project.setRoot(root);
@@ -186,6 +188,7 @@ public class ProjectService {
         // пишем в базу
         Directory toCreate = new Directory();
         toCreate.setName(suggestedDirectoryName);
+        toCreate.setCreatedAt(Instant.now());
         parent.getChildren().add(toCreate);
         toCreate.setParent(parent);
 
@@ -352,6 +355,8 @@ public class ProjectService {
         
         File toCreate = new File();
         toCreate.setExtension(extension);
+        toCreate.setCreatedAt(Instant.now());
+        toCreate.setUpdatedAt(Instant.now());
         toCreate.setName(filename);
         toCreate.setParent(parent);
         parent.getFiles().add(toCreate);

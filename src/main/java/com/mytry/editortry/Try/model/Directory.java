@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
 import java.util.List;
 
 @Entity
@@ -13,6 +14,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class Directory {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,6 +32,10 @@ public class Directory {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<File> files;
+
+
+    @Column
+    private Instant createdAt;
 
 
 

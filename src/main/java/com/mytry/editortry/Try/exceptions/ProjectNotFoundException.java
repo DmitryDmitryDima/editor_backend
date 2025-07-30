@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.exceptions.project;
+package com.mytry.editortry.Try.exceptions;
 
 public class ProjectNotFoundException extends RuntimeException {
 

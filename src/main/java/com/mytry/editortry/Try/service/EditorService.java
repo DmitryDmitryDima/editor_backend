@@ -3,16 +3,23 @@ package com.mytry.editortry.Try.service;
 
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
+import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
+import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
+import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 
@@ -24,6 +31,57 @@ public class EditorService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+    @Transactional(rollbackOn = Exception.class)
+    public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
+
+
+
+
+        EditorFileSaveAnswer editorFileSaveAnswer = new EditorFileSaveAnswer();
+        File file = fileRepository.findById(request.getFile_id())
+                .orElseThrow(()->new IllegalArgumentException("invalid id"));
+
+
+        // СРАВНИВАЕМ ФРОНТЕНД ВРЕМЯ И ВРЕМЯ ПОСЛЕДНЕГО ИЗМЕНЕНИЯ - ЕСЛИ ИЗМЕНЕНИЕ в базе БЫЛО ПОЗЖЕ, ТО ЭТО РАССИНХРОН!
+        Instant databaseTime = file.getUpdatedAt();
+        Instant clientTime = request.getClientTime();
+
+        if (databaseTime.isAfter(clientTime)){
+            throw new IllegalArgumentException("time synchronization error");
+        }
+
+
+
+
+
+        Project project = projectRepository.findById(request.getProject_id()).orElseThrow(()->
+            new IllegalArgumentException("invalid project id")
+        );
+
+
+        String username = project.getOwner().getUsername();
+
+        // вычисляем путь к файловой системе - проверка целостности выполняется только при fetch
+        String disk_path = disk_directory+username+"/projects/"+project.getName()+"/"+request.getFull_path();
+
+        try (FileWriter writer = new FileWriter(disk_path)) {
+            writer.write(request.getContent());
+        } catch (IOException e) {
+            throw new IllegalArgumentException("file update fail");
+        }
+
+
+        // возвращаем время изменения файла для контроля изменений
+        Instant time = Instant.now();
+        file.setUpdatedAt(time);
+        editorFileSaveAnswer.setUpdatedAt(time);
+
+        return editorFileSaveAnswer;
+    }
 
 
     public EditorFileReadAnswer loadFile(EditorFileReadRequest request){
@@ -103,6 +161,7 @@ public class EditorService {
 
 
         editorFileReadAnswer.setContent(sb.toString());
+        editorFileReadAnswer.setUpdatedAt(Instant.now());
 
 
 
