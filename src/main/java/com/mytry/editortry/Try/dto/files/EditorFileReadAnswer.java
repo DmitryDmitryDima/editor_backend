@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TextFileDTO {
+public class EditorFileReadAnswer {
 
     // текстовое содержимое
     private String content;
@@ -16,6 +16,8 @@ public class TextFileDTO {
     private Long file_id;
 
     private Long project_id;
+
+    // todo время обновления объекта
 
 
 

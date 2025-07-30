@@ -1,12 +1,12 @@
 package com.mytry.editortry.Try.service;
 
 
-import com.mytry.editortry.Try.dto.files.TextFileDTO;
+import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
+import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.ProjectRepository;
-import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
-public class FilesService {
+public class EditorService {
 
     @Value("${files.directory}")
     private String disk_directory;
@@ -26,18 +26,20 @@ public class FilesService {
     private ProjectRepository projectRepository;
 
 
+    public EditorFileReadAnswer loadFile(EditorFileReadRequest request){
 
-    public TextFileDTO loadFile(String username,
-                                String projectname,
-                                String fullPath){
+        // get props
+        String username = request.getUsername();
+        String projectname = request.getProjectname();
+        String fullPath = request.getFullPath();
 
 
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectname)
                 .orElseThrow(()-> new IllegalArgumentException("no project found")
-        );
+                );
 
-        TextFileDTO textFileDTO = new TextFileDTO();
-        textFileDTO.setProject_id(project.getId());
+        EditorFileReadAnswer editorFileReadAnswer = new EditorFileReadAnswer();
+        editorFileReadAnswer.setProject_id(project.getId());
 
         /*
         извлекаем file_id, заодно проверяя целостность файловой системы
@@ -58,11 +60,11 @@ public class FilesService {
             if (x== path.length-1){
                 List<File> files = directory.getFiles();
                 file = files.stream().filter(el->(el.getName()+"."+el.getExtension())
-                        .equals(step))
+                                .equals(step))
                         .findAny()
                         .orElseThrow(()->
-                        new IllegalArgumentException("no file found")
-                );
+                                new IllegalArgumentException("no file found")
+                        );
 
 
 
@@ -79,7 +81,7 @@ public class FilesService {
             }
         }
 
-        textFileDTO.setFile_id(file.getId());
+        editorFileReadAnswer.setFile_id(file.getId());
 
         // загружаем файл из диска
         java.io.File disk_file = new java.io.File(disk_directory+"/"+username+"/projects/"+projectname+"/"+fullPath);
@@ -100,7 +102,7 @@ public class FilesService {
 
 
 
-        textFileDTO.setContent(sb.toString());
+        editorFileReadAnswer.setContent(sb.toString());
 
 
 
@@ -109,23 +111,6 @@ public class FilesService {
 
 
 
-        return textFileDTO;
+        return editorFileReadAnswer;
     }
-
-
-
-
-
-
-
-    public void saveFile(){
-
-    }
-
-
-
-
-
-
-
 }

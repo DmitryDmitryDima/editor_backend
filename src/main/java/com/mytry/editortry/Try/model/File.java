@@ -24,6 +24,8 @@ public class File {
     @Column
     private String extension;
 
+
+
     // статус файла
     @Enumerated(EnumType.STRING)
     private FileStatus status = FileStatus.AVAILABLE;

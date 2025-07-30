@@ -22,9 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/editor/")
-public class EditorApi {
+public class EditorApiOld {
 
-    private static final Logger logger = LoggerFactory.getLogger(EditorApi.class);
+    private static final Logger logger = LoggerFactory.getLogger(EditorApiOld.class);
 
 
     // сервис, отвечающий за все, связанное с запуском кода
