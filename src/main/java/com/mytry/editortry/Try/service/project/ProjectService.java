@@ -15,7 +15,7 @@ import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
-import com.mytry.editortry.Try.utils.websocket.WebSocketLogger;
+import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;

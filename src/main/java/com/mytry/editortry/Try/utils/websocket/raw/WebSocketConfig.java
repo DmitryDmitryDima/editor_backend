@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.utils.websocket;
+package com.mytry.editortry.Try.utils.websocket.raw;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;

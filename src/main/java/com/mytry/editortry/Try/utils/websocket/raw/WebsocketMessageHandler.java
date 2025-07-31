@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.utils.websocket;
+package com.mytry.editortry.Try.utils.websocket.raw;
 
 // Program to eastablish the socket connection
 

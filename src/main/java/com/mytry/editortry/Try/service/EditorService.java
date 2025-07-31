@@ -10,9 +10,13 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
+import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
+import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -26,14 +30,28 @@ import java.util.List;
 @Service
 public class EditorService {
 
+
+    // рабочая директория на диске
     @Value("${files.directory}")
     private String disk_directory;
 
+    // репозитории
     @Autowired
     private ProjectRepository projectRepository;
 
     @Autowired
     private FileRepository fileRepository;
+
+    // вебсокет уведомления
+    @Autowired
+    private SimpMessagingTemplate notifier;
+
+
+
+
+
+
+
 
     @Transactional(rollbackOn = Exception.class)
     public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
@@ -75,10 +93,23 @@ public class EditorService {
         }
 
 
-        // возвращаем время изменения файла для контроля изменений
+        // фиксируем время изменения файла для контроля изменений
         Instant time = Instant.now();
         file.setUpdatedAt(time);
         editorFileSaveAnswer.setUpdatedAt(time);
+
+        // формируем событие изменения файла
+        RealtimeEvent realtimeEvent = new RealtimeEvent();
+        realtimeEvent.setType(EventType.FILE_SAVE);
+        realtimeEvent.setTime(time);
+        FileSaveInfo fileSaveInfo = new FileSaveInfo();
+        fileSaveInfo.setProject_id(project.getId());
+        fileSaveInfo.setFile_id(file.getId());
+        realtimeEvent.setMetaInfo(fileSaveInfo);
+
+        // информация отправляется на два направления
+        notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
+        notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
 
         return editorFileSaveAnswer;
     }
