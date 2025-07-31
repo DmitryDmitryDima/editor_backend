@@ -36,7 +36,7 @@ public class EditorAPI {
     @PostMapping("/save")
     public ResponseEntity<EditorFileSaveAnswer> save(@RequestBody EditorFileSaveRequest request){
 
-        System.out.println(request.getFull_path());
+        System.out.println(request.getClientTime());
         return ResponseEntity.ok(editorService.saveFile(request));
     }
 
