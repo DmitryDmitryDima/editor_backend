@@ -27,6 +27,9 @@ public class EditorFileSaveRequest {
 
     private Instant clientTime;
 
+    // генерируется пользователем, вставляется в websocket event рассылку
+    private String event_id;
+
 
 
 

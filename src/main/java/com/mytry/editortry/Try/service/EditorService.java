@@ -56,6 +56,8 @@ public class EditorService {
     @Transactional(rollbackOn = Exception.class)
     public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
 
+        System.out.println(request.getEvent_id());
+
 
 
 
@@ -106,6 +108,9 @@ public class EditorService {
         fileSaveInfo.setProject_id(project.getId());
         fileSaveInfo.setFile_id(file.getId());
         realtimeEvent.setMetaInfo(fileSaveInfo);
+
+        // клиентский одноразовый ключ для идентификации ивента
+        realtimeEvent.setEvent_id(request.getEvent_id());
 
         // информация отправляется на два направления
         notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );

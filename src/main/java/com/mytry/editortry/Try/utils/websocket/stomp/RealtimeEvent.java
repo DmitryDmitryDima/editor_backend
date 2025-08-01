@@ -13,6 +13,9 @@ import java.time.Instant;
 @AllArgsConstructor
 public class RealtimeEvent{
 
+    // генерируется пользователем при совершении действия
+    private String event_id;
+
     // тип ивента - базируясь на нем фронтенд будет думать, что делать
     private EventType type;
 
