@@ -17,6 +17,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -47,6 +48,11 @@ public class EditorService {
     private SimpMessagingTemplate notifier;
 
 
+    // менеджмент сессий (тест)
+    @Autowired
+    private SimpUserRegistry simpUserRegistry;
+
+
 
 
 
@@ -56,7 +62,7 @@ public class EditorService {
     @Transactional(rollbackOn = Exception.class)
     public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
 
-        System.out.println(request.getEvent_id());
+
 
 
 
@@ -69,6 +75,9 @@ public class EditorService {
         // СРАВНИВАЕМ ФРОНТЕНД ВРЕМЯ И ВРЕМЯ ПОСЛЕДНЕГО ИЗМЕНЕНИЯ - ЕСЛИ ИЗМЕНЕНИЕ в базе БЫЛО ПОЗЖЕ, ТО ЭТО РАССИНХРОН!
         Instant databaseTime = file.getUpdatedAt();
         Instant clientTime = request.getClientTime();
+
+
+
 
         if (databaseTime.isAfter(clientTime)){
             throw new IllegalArgumentException("time synchronization error");
@@ -116,6 +125,22 @@ public class EditorService {
         notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
         notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
 
+
+
+        // тест - поиск числа подписчиков для страницы файла
+        simpUserRegistry.findSubscriptions((subscription -> subscription
+                .getDestination().equals("/projects/"+project.getId()+"/"+file.getId()))).forEach(System.out::println);
+
+
+
+        // тест - поиск числа подписчиков для страницы проекта
+        simpUserRegistry.findSubscriptions((subscription -> subscription
+                .getDestination().equals("/projects/"+project.getId()))).forEach(System.out::println);
+
+        // число пользователей
+        System.out.println(simpUserRegistry.getUserCount());
+
+
         return editorFileSaveAnswer;
     }
 
@@ -139,10 +164,10 @@ public class EditorService {
         извлекаем file_id, заодно проверяя целостность файловой системы
 
          */
-        //System.out.println(fullPath);
+
         String[] path = fullPath.split("/");
-        System.out.println(Arrays.toString(path));
-        //System.out.println(path.length);
+
+
 
         Directory directory = project.getRoot();
 

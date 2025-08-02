@@ -24,7 +24,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
         // the CORS policy for the handlers so that other
         // domains can also access the socket
         webSocketHandlerRegistry
-                .addHandler(handler,"/logging")
+                .addHandler(handler,"/ws/logging")
                 .setAllowedOrigins("*");
     }
 }

@@ -14,12 +14,15 @@ public class ProjectBrokerConfigurer implements WebSocketMessageBrokerConfigurer
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/projects"); // сюда клиент подписывается {projectId}/{file_id}
         registry.setApplicationDestinationPrefixes("/realtime"); // на адрес с этим префиксом клиент отправляет ивенты
+
         // (ловим в спец контроллере)
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/project").setAllowedOriginPatterns("*");//  сюда мы подключаемся
+        registry.addEndpoint("/ws/project").setAllowedOriginPatterns("*")
+                ;//  сюда мы подключаемся
+
 
 
     }

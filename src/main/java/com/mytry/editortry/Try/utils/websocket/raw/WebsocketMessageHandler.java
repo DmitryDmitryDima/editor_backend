@@ -36,6 +36,7 @@ public class WebsocketMessageHandler extends TextWebSocketHandler {
 
         // Adding the session into the list
         webSocketSessions.add(session);
+        System.out.println("connected");
     }
 
     // When client disconnect from WebSocket then this
