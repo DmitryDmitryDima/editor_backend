@@ -127,18 +127,7 @@ public class EditorService {
 
 
 
-        // тест - поиск числа подписчиков для страницы файла
-        simpUserRegistry.findSubscriptions((subscription -> subscription
-                .getDestination().equals("/projects/"+project.getId()+"/"+file.getId()))).forEach(System.out::println);
 
-
-
-        // тест - поиск числа подписчиков для страницы проекта
-        simpUserRegistry.findSubscriptions((subscription -> subscription
-                .getDestination().equals("/projects/"+project.getId()))).forEach(System.out::println);
-
-        // число пользователей
-        System.out.println(simpUserRegistry.getUserCount());
 
 
         return editorFileSaveAnswer;
