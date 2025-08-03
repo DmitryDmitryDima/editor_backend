@@ -201,7 +201,8 @@ public class EditorService {
 
             String s;
             while ((s = bufferedReader.readLine())!=null){
-                sb.append(s);
+                
+                sb.append(s+"\n");
             }
         }
         catch (Exception e){

@@ -19,8 +19,8 @@ public class EditorAPI {
     @Autowired
     private EditorService editorService;
 
-    // читаем файл, создаем, при необходимости, кеш
-    @PostMapping(value = "/readAndCache")
+    // читаем файл
+    @PostMapping(value = "/load")
     public ResponseEntity<EditorFileReadAnswer> readAndCacheFile(
             @RequestBody EditorFileReadRequest request
             ){
