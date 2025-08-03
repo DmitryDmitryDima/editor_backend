@@ -13,11 +13,11 @@ import java.util.Map;
 public class CacheSystem {
 
     // пара project_id : project cache
-    private Map<Long, ProjectCache> projectsCaches;
+    private final Map<Long, ProjectCache> projectsCaches = new HashMap<>();
 
 
     // пара sessionId - id проекта
-    private Map<String, Long> subscribersProjectsAssosiation;
+    private final Map<String, Long> subscribersProjectsAssosiation = new HashMap<>();
 
 
 

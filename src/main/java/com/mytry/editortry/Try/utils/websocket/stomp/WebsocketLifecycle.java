@@ -1,5 +1,7 @@
 package com.mytry.editortry.Try.utils.websocket.stomp;
 
+import com.mytry.editortry.Try.utils.cache.CacheSystem;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.Message;
@@ -10,28 +12,32 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
+import java.util.Arrays;
+
 @Component
 public class WebsocketLifecycle {
 
-    @EventListener
-    private void handleSessionConnected(SessionConnectEvent event) {
+    @Autowired
+    private CacheSystem cacheSystem;
 
 
-
-        StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        System.out.println(headerAccessor);
-        System.out.println("connected");
-        System.out.println(event.getSource());
-        Message<byte[]> message = event.getMessage();
-        String simpDestination = (String) message.getHeaders().get("simpDestination");
-        System.out.println(simpDestination);
-    }
 
     @EventListener
     private void handleSessionSubscribe(SessionSubscribeEvent event){
         System.out.println("subscribed");
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        System.out.println(headerAccessor);
+        String destination = headerAccessor.getDestination();
+
+        // for project
+        if (destination!=null && destination.startsWith("/projects/")){
+
+            String topic = destination.split("/projects/")[1];
+            String[] topicDivided = topic.split("/");
+
+            Long projectId = Long.valueOf(topicDivided[0]);
+            cacheSystem.addProjectSubscription(headerAccessor.getSessionId(), projectId);
+
+        }
     }
 
 
@@ -41,7 +47,8 @@ public class WebsocketLifecycle {
         System.out.println("disconnected");
 
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        System.out.println(headerAccessor);
+        cacheSystem.removeProjectSubscription(headerAccessor.getSessionId());
+
     }
 
 

@@ -1,8 +1,6 @@
 package com.mytry.editortry.Try.utils.cache;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 
 public class ProjectCache {
@@ -20,10 +18,10 @@ public class ProjectCache {
 
 
     // пара - id файла - кеш файла
-    private Map<Integer, FileCache> fileCashes;
+    private final Map<Integer, FileCache> fileCashes = new HashMap<>();
 
     // список подписчиков - если 0. кеш проекта стирается
-    private Set<String> subscribers;
+    private final Set<String> subscribers = new HashSet<>();
 
 
 
