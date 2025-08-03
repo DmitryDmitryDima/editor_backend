@@ -24,9 +24,11 @@ public class WebsocketLifecycle {
 
     @EventListener
     private void handleSessionSubscribe(SessionSubscribeEvent event){
-        System.out.println("subscribed");
+
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String destination = headerAccessor.getDestination();
+
+        System.out.println("subscribed with session id "+headerAccessor.getSessionId());
 
         // for project
         if (destination!=null && destination.startsWith("/projects/")){
@@ -44,9 +46,10 @@ public class WebsocketLifecycle {
 
     @EventListener
     private void handleSessionDisconnect(SessionDisconnectEvent event) {
-        System.out.println("disconnected");
+
 
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        System.out.println("unsubscribed with session id "+headerAccessor.getSessionId());
         cacheSystem.removeProjectSubscription(headerAccessor.getSessionId());
 
     }

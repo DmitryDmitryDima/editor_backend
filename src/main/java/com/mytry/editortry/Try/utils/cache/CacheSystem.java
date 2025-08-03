@@ -1,6 +1,10 @@
 package com.mytry.editortry.Try.utils.cache;
 
 import com.mytry.editortry.Try.model.Project;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -10,6 +14,7 @@ import java.util.Map;
 // система напрямую связана с websocket
 // происходит первая  подписка на файл или проект в целом = создается кеш проекта
 @Component
+
 public class CacheSystem {
 
     // пара project_id : project cache
@@ -26,11 +31,15 @@ public class CacheSystem {
 
 
     public synchronized void addProjectSubscription(String sessionId, Long projectId){
+
+
         ProjectCache projectCache = projectsCaches.computeIfAbsent(projectId, k -> new ProjectCache());
+        subscribersProjectsAssosiation.put(sessionId, projectId);
+
 
         projectCache.addSubscriber(sessionId);
 
-        ///
+
     }
 
 
@@ -38,6 +47,7 @@ public class CacheSystem {
     public synchronized void removeProjectSubscription(String sessionId){
 
         Long projectId = subscribersProjectsAssosiation.remove(sessionId);
+
 
         ProjectCache cache = projectsCaches.get(projectId);
 
@@ -52,11 +62,7 @@ public class CacheSystem {
     }
 
 
-
-
-
-
-
-
-
+    public Map<Long, ProjectCache> getProjectsCaches() {
+        return projectsCaches;
+    }
 }
