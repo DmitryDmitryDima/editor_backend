@@ -15,20 +15,59 @@ import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+@Service
 public class ParserUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(ParserUtils.class);
+
+
+
+    public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
+        EditorBasicSuggestionAnswer answer = new EditorBasicSuggestionAnswer();
+
+        try {
+            String completedCode = makeCodeComplete(request);
+            prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
+            CompilationUnit c = StaticJavaParser.parse(completedCode);
+
+            // пример извлечения публичного типа и его методов из кода
+            c.getTypes().forEach(el->{
+
+
+                System.out.println("type "+el.getNameAsString()+" with modifiers "+el.getModifiers());
+                el.getMethods().forEach(m->{
+                    System.out.println("method "+ m.getName()+" with modifiers "+m.getModifiers());
+                });
+            });
+
+        }
+        catch (Exception e){
+            return answer;
+        }
+
+
+
+
+
+
+
+        return answer;
+    }
 
 
 
@@ -88,6 +127,13 @@ public class ParserUtils {
         return request.getCode().substring(0, request.getPosition())
                 +"dummy;"+request.getCode().substring(request.getPosition()+1);
 
+    }
+
+    private String makeCodeComplete(EditorBasicSuggestionRequest request){
+        int lineStart = request.getLineStart();
+        String code = request.getCode();
+
+        return code.substring(0, lineStart)+"//"+code.substring(lineStart+1);
     }
 
 

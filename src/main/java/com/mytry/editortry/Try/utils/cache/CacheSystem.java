@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,7 +15,6 @@ import java.util.Map;
 // система напрямую связана с websocket
 // происходит первая  подписка на файл или проект в целом = создается кеш проекта
 @Component
-
 public class CacheSystem {
 
     // пара project_id : project cache
@@ -23,6 +23,16 @@ public class CacheSystem {
 
     // пара sessionId - id проекта
     private final Map<String, Long> subscribersProjectsAssosiation = new HashMap<>();
+
+
+    // мы фиксируем момент последнего изменения кеша для того, чтобы специальный обработчик чистил зависшие старые кеши
+    public synchronized void setProjectChange(Long projectId){
+        ProjectCache projectCache = projectsCaches.get(projectId);
+        if (projectCache!=null){
+            projectCache.setLastModified(Instant.now());
+        }
+    }
+
 
 
 

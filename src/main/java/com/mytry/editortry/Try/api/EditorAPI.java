@@ -1,5 +1,7 @@
 package com.mytry.editortry.Try.api;
 
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -38,6 +40,16 @@ public class EditorAPI {
 
         System.out.println(request.getClientTime());
         return ResponseEntity.ok(editorService.saveFile(request));
+    }
+
+
+    // предложка, вызываемая, когда пользователь пишет что-то кроме точки
+    // потенциальные проблемы - огромное число запросов + реализация автоимпорта
+    @PostMapping("/completions/basic")
+    public ResponseEntity<EditorBasicSuggestionAnswer> basicSuggestion(@RequestBody EditorBasicSuggestionRequest request){
+
+        return ResponseEntity.ok(editorService.basicSuggestion(request));
+
     }
 
 }

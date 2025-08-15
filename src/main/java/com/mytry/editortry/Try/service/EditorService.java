@@ -1,6 +1,8 @@
 package com.mytry.editortry.Try.service;
 
 
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -10,6 +12,9 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import com.mytry.editortry.Try.service.parser.ParserService;
+import com.mytry.editortry.Try.service.parser.ParserUtils;
+import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
@@ -47,10 +52,31 @@ public class EditorService {
     @Autowired
     private SimpMessagingTemplate notifier;
 
-
-    // менеджмент сессий (тест)
+    // cache system
     @Autowired
-    private SimpUserRegistry simpUserRegistry;
+    private CacheSystem cacheSystem;
+
+
+
+    @Autowired
+    private ParserUtils parserUtils;
+
+
+
+
+
+    public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
+
+        // формирование внешней предложки - первоначально происходит обращение к кешу по project id
+        // если он существует, значит он актуален
+        // todo cache system manipulation
+
+
+
+        return parserUtils.basicSuggestion(request);
+    }
+
+
 
 
 
@@ -104,6 +130,8 @@ public class EditorService {
         }
 
 
+
+
         // фиксируем время изменения файла для контроля изменений
         Instant time = Instant.now();
         file.setUpdatedAt(time);
@@ -124,6 +152,11 @@ public class EditorService {
         // информация отправляется на два направления
         notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
         notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
+
+
+
+        // уведомляем кеш систему о том, что в проекте произошли изменения
+        cacheSystem.setProjectChange(project.getId());
 
 
 
