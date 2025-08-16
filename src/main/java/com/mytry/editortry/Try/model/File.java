@@ -43,6 +43,9 @@ public class File {
     @Column
     private Instant updatedAt;
 
+    // допустим, если в шаблоне это pom.xml
+    private boolean immutable;
+
 
 
 

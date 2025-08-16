@@ -37,6 +37,9 @@ public class Directory {
     @Column
     private Instant createdAt;
 
+    // иммутабельность директории - соблюдение сохранения шаблона
+    private boolean immutable;
+
 
 
     @Override

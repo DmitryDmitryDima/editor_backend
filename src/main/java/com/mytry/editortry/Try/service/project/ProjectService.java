@@ -18,6 +18,7 @@ import com.mytry.editortry.Try.repository.UserRepository;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.apache.maven.model.v4.MavenStaxWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,9 +69,133 @@ public class ProjectService {
 
 
 
+
+    // создаем структуру директорий, соответствующую типичной структуре maven проекта
+    // все файлы и директории шаблона - иммутабельные
+    // todo убрать дублирование кода после теста работоспособности
+    private void arrangeMavenTraditionalStructure(Directory root, String rootPath) throws Exception{
+
+
+        // pom.xml
+        if (root.getFiles()==null){
+            root.setFiles(new ArrayList<>());
+        }
+
+        File pom = new File();
+        pom.setImmutable(true);
+        pom.setName("pom");
+        pom.setExtension("xml");
+        pom.setCreatedAt(Instant.now());
+        pom.setUpdatedAt(Instant.now());
+        pom.setParent(root);
+        root.getFiles().add(pom);
+
+
+
+        // src
+        Directory src = new Directory();
+        src.setImmutable(true);
+        src.setName("src");
+        src.setCreatedAt(Instant.now());
+
+        if (root.getChildren()==null){
+            root.setChildren(new ArrayList<>());
+        }
+
+        root.getChildren().add(src);
+        src.setParent(root);
+
+        directoryRepository.save(src);
+
+        // main
+        Directory main = new Directory();
+        main.setImmutable(true);
+        main.setName("main");
+        main.setCreatedAt(Instant.now());
+
+        if (src.getChildren()==null){
+            src.setChildren(new ArrayList<>());
+        }
+
+        src.getChildren().add(main);
+        main.setParent(src);
+
+        directoryRepository.save(main);
+
+        // java
+        Directory java = new Directory();
+        java.setImmutable(true);
+        java.setName("java");
+        java.setCreatedAt(Instant.now());
+
+        if (main.getChildren() == null){
+            main.setChildren(new ArrayList<>());
+        }
+
+        main.getChildren().add(java);
+        java.setParent(main);
+
+        directoryRepository.save(java);
+
+        // resources
+        Directory resources = new Directory();
+        resources.setImmutable(true);
+        resources.setName("resources");
+        resources.setCreatedAt(Instant.now());
+
+        if (main.getChildren() == null){
+            main.setChildren(new ArrayList<>());
+        }
+
+        main.getChildren().add(resources);
+        resources.setParent(main);
+
+        directoryRepository.save(resources);
+
+
+
+        // работаем с диском, создаем директории физически плюс папку target
+
+        Files.createDirectories(Path.of(rootPath+"/src/main/java"));
+        Files.createDirectories(Path.of(rootPath+"/src/main/resources"));
+        Files.createDirectories(Path.of(rootPath+"/target"));
+
+        // пишем файл pom.xml
+        Files.createFile(Path.of(rootPath+"/pom.xml"));
+
+
+        /*
+        генерируем минимальный pom.xml
+         */
+        String minimalPom = """
+                <project>
+                    <modelVersion>4.0.0</modelVersion>
+                    <groupId>com.example</groupId>
+                    <artifactId>%s</artifactId>
+                    <version>1.0-SNAPSHOT</version>
+                </project>
+                """.formatted(root.getName()+" project");
+
+
+
+        try (FileWriter writer = new FileWriter(rootPath+"/pom.xml")) {
+            writer.write(minimalPom);
+
+        } catch (IOException e) {
+            throw new IllegalArgumentException("pom.xml content creation fails");
+        }
+
+
+
+    }
+
+
+
     // создание нового проекта с директорией
+    // данный вариант разработан в соответствии с шаблоном maven
+    // потенциально может быть несколько реализаций этого метода, в зависимости от шаблона проекта
     @Transactional(rollbackOn = Exception.class)
-    public void createProject(String username, String projectName) throws IllegalArgumentException {
+    public void createProject(String username, String projectName) throws Exception {
 
         /*
         вариант кода без каскадирования
@@ -90,6 +216,9 @@ public class ProjectService {
         }
 
         Directory root = new Directory();
+
+        root.setImmutable(true); // важно - корневая папка строго иммутабельна
+
         root.setName(projectName);
         root.setCreatedAt(Instant.now());
         directoryRepository.save(root);
@@ -116,6 +245,16 @@ public class ProjectService {
         else {
             throw new IllegalArgumentException("directory already exists");
         }
+
+
+
+        // структура проекта - для демонстрации создаем типичную maven структуру
+        arrangeMavenTraditionalStructure(root, dir.getAbsolutePath());
+
+
+
+
+
 
 
     }
@@ -238,6 +377,10 @@ public class ProjectService {
 
         if (directory.getParent()==null){
             throw new IllegalArgumentException("this is root");
+        }
+
+        if (directory.isImmutable()){
+            throw new IllegalArgumentException("you can't delete project structure folder");
         }
 
 
@@ -364,6 +507,51 @@ public class ProjectService {
 
         try{
             Files.createFile(Path.of(fullPath+filename+"."+extension));
+
+
+
+
+
+            // автоматически генерируем package и класс;
+            if (extension.equals("java")){
+                String[] packageWay = fullPath.split("src/main/java/");
+                StringBuilder packageName = new StringBuilder();
+                // не папка java
+                if (packageWay.length>1){
+
+                    packageName.append("package ");
+
+
+                    // на случай. если кто-то смышленный создаст еще один src/main/java снизу иерархии
+                    for (int x = 1; x<packageWay.length; x++){
+                        String part = packageWay[x];
+                        part = part.replace("/", ".");
+                        packageName.append(part);
+                    }
+                    packageName.deleteCharAt(packageName.length()-1);
+                    packageName.append(";");
+
+
+                }
+                String template = """
+                        %s
+                        
+                        public class %s{
+                        
+                        }
+                        """
+                        .formatted(packageName.toString(),filename);
+
+
+                try (FileWriter writer = new FileWriter(fullPath+filename+"."+extension)) {
+                    writer.write(template);
+
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("error while writing java file template");
+                }
+
+            }
+
         }
         catch (Exception e){
             webSocketLogger.log(e.getMessage());
@@ -387,7 +575,9 @@ public class ProjectService {
         // извлекаем сущность файла из базы данных
         File file = fileRepository.findById(id).orElseThrow(()->new IllegalArgumentException("file doesn't exists"));
 
-
+        if (file.isImmutable()){
+            throw new IllegalArgumentException("you can't remove this file");
+        }
 
 
         // конструируем путь до файла
@@ -537,8 +727,7 @@ public class ProjectService {
         directoryMember.setIndex("directory_"+directory.getId());
         directoryMember.setData(directory.getName());
         directoryMember.setFolder(true);
-        directoryMember.setCanMove(true);
-        directoryMember.setCanRename(true);
+        directoryMember.setImmutable(directory.isImmutable());
 
 
 
@@ -550,8 +739,7 @@ public class ProjectService {
         if (layer==null){
             // если корень
             directoryMember.setIndex("basic_root");
-            directoryMember.setCanMove(false);
-            directoryMember.setCanRename(false);
+
 
         }
 
@@ -568,8 +756,7 @@ public class ProjectService {
                     fileMember.setIndex(index);
                     fileMember.setData(file.getName()+"."+file.getExtension());
                     fileMember.setFolder(false);
-                    fileMember.setCanMove(true);
-                    fileMember.setCanRename(true);
+                    fileMember.setImmutable(file.isImmutable());
 
                     directoryMember.getChildren().add(index);
 

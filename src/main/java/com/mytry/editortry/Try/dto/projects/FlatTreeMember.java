@@ -61,12 +61,11 @@ const items = {
 public class FlatTreeMember {
 
     private String index; // folder + id, file + id -> все должно быть уникальным в рамках дерева
-    private boolean canMove; //
     @JsonProperty("isFolder")
     private boolean isFolder; // false для файла
     private List<String> children = new ArrayList<>(); // идентификатор в формате, используемом в index
     private String data;
-    private boolean canRename; // можно переименовать все, кроме root
+    private boolean immutable; // можно переименовать все, кроме root
 
 
 

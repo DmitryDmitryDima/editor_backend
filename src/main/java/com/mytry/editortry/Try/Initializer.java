@@ -16,11 +16,13 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class Initializer implements CommandLineRunner {
 
 
+    private List<String> immutables = List.of("src", "main","java","resources");
     @Autowired
     private UserRepository userRepository;
 
@@ -65,6 +67,7 @@ public class Initializer implements CommandLineRunner {
                 project.setRoot(root);
                 root.setName(f.getName());
                 root.setCreatedAt(Instant.now());
+                root.setImmutable(true);
 
 
                 prepareMyRoot(f, root);
@@ -90,8 +93,18 @@ public class Initializer implements CommandLineRunner {
         if (childrenFiles!=null){
             for (java.io.File f:childrenFiles){
                 if (f.isDirectory()){
+                    String name = f.getName();
+                    // таргет папка невидима (при создании проекта она не вносится в бд)
+                    if(name.equals("target")){
+                        continue;
+                    }
+
                     Directory child = new Directory();
-                    child.setName(f.getName());
+                    // для удобства введем запрет на удаление папок с определенным именем
+                    if (immutables.contains(name)){
+                        child.setImmutable(true);
+                    }
+                    child.setName(name);
                     child.setCreatedAt(Instant.now());
                     parentEntity.getChildren().add(child);
                     child.setParent(parentEntity);
@@ -113,6 +126,9 @@ public class Initializer implements CommandLineRunner {
                     }
 
 
+                    if(fullName.equals("pom.xml")){
+                        file.setImmutable(true);
+                    }
 
                     file.setParent(parentEntity);
                     file.setCreatedAt(Instant.now());
