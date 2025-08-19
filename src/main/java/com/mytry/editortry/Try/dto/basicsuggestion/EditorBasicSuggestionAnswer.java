@@ -12,4 +12,6 @@ import java.util.List;
 public class EditorBasicSuggestionAnswer {
     private List<String> innerTypes;
 
+
+
 }

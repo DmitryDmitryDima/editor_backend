@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.service.parser;
+package com.mytry.editortry.Try.service.codeanalyzis;
 
 
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
@@ -17,10 +17,10 @@ public class ParserService {
 
 
     // код, относящийся к анализу и парсингу
-    private final ParserUtils parserUtils;
+    private final CodeAnalyzer codeAnalyzer;
 
     public ParserService(){
-        parserUtils = new ParserUtils();
+        codeAnalyzer = new CodeAnalyzer();
     }
 
 
@@ -29,14 +29,14 @@ public class ParserService {
     public DotSuggestionAnswer dotSuggestion(DotSuggestionRequest request){
 
 
-        return parserUtils.dotParsing(request);
+        return codeAnalyzer.dotParsing(request);
 
 
     }
 
     // запрос импортов
     public ImportAnswer importSuggestion(ImportRequest request){
-        return parserUtils.importParsing(request);
+        return codeAnalyzer.importParsing(request);
     }
 
 

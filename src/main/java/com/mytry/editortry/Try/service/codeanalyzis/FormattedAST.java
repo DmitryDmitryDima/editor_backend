@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.service.parser;
+package com.mytry.editortry.Try.service.codeanalyzis;
 
 import com.github.javaparser.Range;
 import com.github.javaparser.ast.CompilationUnit;

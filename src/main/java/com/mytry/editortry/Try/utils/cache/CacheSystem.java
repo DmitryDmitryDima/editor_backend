@@ -25,12 +25,21 @@ public class CacheSystem {
     private final Map<String, Long> subscribersProjectsAssosiation = new HashMap<>();
 
 
+
+
+
     // мы фиксируем момент последнего изменения кеша для того, чтобы специальный обработчик чистил зависшие старые кеши
     public synchronized void setProjectChange(Long projectId){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache!=null){
             projectCache.setLastModified(Instant.now());
         }
+    }
+
+
+    // уведомляем систему о том, что в проекте произошли значительные изменения, делающие кеш неактуальным
+    public synchronized void removeProjectCache(Long projectId){
+        projectsCaches.remove(projectId);
     }
 
 

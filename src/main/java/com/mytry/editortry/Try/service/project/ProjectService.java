@@ -15,6 +15,7 @@ import com.mytry.editortry.Try.repository.DirectoryRepository;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
+import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -48,6 +49,10 @@ public class ProjectService {
 
     @Autowired
     private FileRepository fileRepository;
+
+
+    @Autowired
+    private CacheSystem cacheSystem;
 
 
 
@@ -137,6 +142,20 @@ public class ProjectService {
 
         directoryRepository.save(java);
 
+
+        // com - корневой пакет (чтобы все пакеты были именованными)
+        Directory com = new Directory();
+        com.setImmutable(true);
+        com.setName("com");
+        com.setCreatedAt(Instant.now());
+        if (java.getChildren() == null){
+            java.setChildren(new ArrayList<>());
+        }
+        java.getChildren().add(com);
+        com.setParent(java);
+        directoryRepository.save(com);
+
+
         // resources
         Directory resources = new Directory();
         resources.setImmutable(true);
@@ -156,7 +175,7 @@ public class ProjectService {
 
         // работаем с диском, создаем директории физически плюс папку target
 
-        Files.createDirectories(Path.of(rootPath+"/src/main/java"));
+        Files.createDirectories(Path.of(rootPath+"/src/main/java/com"));
         Files.createDirectories(Path.of(rootPath+"/src/main/resources"));
         Files.createDirectories(Path.of(rootPath+"/target"));
 
@@ -270,7 +289,12 @@ public class ProjectService {
 
 
 
-    // создание директории внутри проекта
+    /*
+    создание директории внутри проекта
+
+    Операция с кешем - удаление кеша, если он есть
+
+     */
 
     @Transactional(rollbackOn = Exception.class)
     public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
@@ -353,13 +377,21 @@ public class ProjectService {
         }
 
 
+        // удаляем кеш - он больше не актуален
+        cacheSystem.removeProjectCache(project.getId());
+
+
 
 
     }
 
 
 
-    // удаление директории внутри проекта - нужно собрать путь до проекта и проверить, принадлежит ли директория проекту
+    /* удаление директории внутри проекта
+
+    Операция с кешем - удаление кеша
+
+     */
     @Transactional(rollbackOn = Exception.class)
     public void deleteDirectory(String username, String projectName, String index)  {
 
@@ -441,8 +473,19 @@ public class ProjectService {
         }
 
 
+        // чистим кеш, если он существует
+        cacheSystem.removeProjectCache(project.getId());
+
+
     }
 
+
+
+    /* Создание файла для проекта
+
+    Операция с кешем - удаляем кеш
+
+     */
     @Transactional(rollbackOn = Exception.class)
     public void createFile(String username, String projectName, String index, String suggestion) throws Exception {
 
@@ -557,10 +600,17 @@ public class ProjectService {
             webSocketLogger.log(e.getMessage());
             throw new Exception(e.getMessage());
         }
+
+        // удаляем кеш - он потерял актуальность
+        cacheSystem.removeProjectCache(project.getId());
     }
 
 
-    // удаление файла в проекте
+    /* удаление файла в проекте
+
+    операция с кешем - удаление
+
+     */
     @Transactional(rollbackOn = Exception.class)
     public void deleteFile(String username, String projectName, String index) throws Exception{
 
@@ -615,6 +665,9 @@ public class ProjectService {
 
         fileRepository.delete(file);
         Files.delete(Path.of(fullPath));
+
+        // удаляем кеш - он потерял актуальность
+        cacheSystem.removeProjectCache(project.getId());
 
 
 

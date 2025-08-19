@@ -12,8 +12,7 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
-import com.mytry.editortry.Try.service.parser.ParserService;
-import com.mytry.editortry.Try.service.parser.ParserUtils;
+import com.mytry.editortry.Try.service.codeanalyzis.CodeAnalyzer;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
@@ -22,7 +21,6 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -30,7 +28,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -59,7 +56,7 @@ public class EditorService {
 
 
     @Autowired
-    private ParserUtils parserUtils;
+    private CodeAnalyzer codeAnalyzer;
 
 
 
@@ -73,7 +70,7 @@ public class EditorService {
 
 
 
-        return parserUtils.basicSuggestion(request);
+        return codeAnalyzer.basicSuggestion(request);
     }
 
 
@@ -84,7 +81,14 @@ public class EditorService {
 
 
 
+    /*
 
+    сохранение файла
+
+    todo Операция с кешем - точечно обновляем кеш файла через id
+    Уведомляем кеш о том, что проект был изменен
+
+     */
     @Transactional(rollbackOn = Exception.class)
     public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
 
@@ -152,6 +156,8 @@ public class EditorService {
         // информация отправляется на два направления
         notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
         notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
+
+
 
 
 

@@ -1,5 +1,6 @@
 package com.mytry.editortry.Try.utils.cache;
 
+import com.mytry.editortry.Try.dto.basicsuggestion.CacheSuggestionInnerProjectType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,6 +23,23 @@ public class ProjectCache {
 
     // список подписчиков - если 0. кеш проекта стирается
     private final Set<String> subscribers = new HashSet<>();
+
+    /*
+    ассоциации для доступа к внутреннему файловому кешу
+
+     */
+
+    // ассоциация - пакет = файлы
+    private final Map<String, List<CacheSuggestionInnerProjectType>> packageToFileAssociation = new HashMap<>();
+
+    // ассоциация - айди файла = файл
+    private final Map<Long, CacheSuggestionInnerProjectType> idToFileAssociation = new HashMap<>();
+
+
+
+
+
+
 
 
     public Instant getLastModified() {
@@ -49,9 +67,7 @@ public class ProjectCache {
         subscribers.add(sessionId);
     }
 
-    /*
-    todo - методы добавления кеша (структура -сложная)
-     */
+
 
 
 

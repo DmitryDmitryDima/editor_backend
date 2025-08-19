@@ -22,7 +22,7 @@ import java.util.List;
 public class Initializer implements CommandLineRunner {
 
 
-    private List<String> immutables = List.of("src", "main","java","resources");
+    private final List<String> immutables = List.of("src", "main","java","resources","com");
     @Autowired
     private UserRepository userRepository;
 

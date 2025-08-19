@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.service.parser;
+package com.mytry.editortry.Try.service.codeanalyzis;
 
 
 
@@ -23,7 +23,6 @@ import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,9 +30,11 @@ import java.util.HashSet;
 import java.util.List;
 
 @Service
-public class ParserUtils {
+public class CodeAnalyzer {
 
-    private static final Logger logger = LoggerFactory.getLogger(ParserUtils.class);
+    private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
+
+
 
 
 
