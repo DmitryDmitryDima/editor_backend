@@ -36,7 +36,7 @@ public class CodeAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
 
 
-    // генерируем публичное api файла
+    // генерируем публичное api файла (учитываем, что может быть несколько типов)
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
 
