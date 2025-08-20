@@ -278,7 +278,7 @@ public class ProjectService {
 
     }
 
-    // удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
+    // todo удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
     @Transactional
     public void deleteProject(Long id){
         if (!projectRepository.existsById(id)){
@@ -377,8 +377,8 @@ public class ProjectService {
         }
 
 
-        // удаляем кеш - он больше не актуален
-        cacheSystem.removeProjectCache(project.getId());
+        // подчищаем неактуальный кеш (но не удаляем саму сущность)
+        cacheSystem.clearProjectCacheContent(project.getId());
 
 
 
@@ -473,8 +473,8 @@ public class ProjectService {
         }
 
 
-        // чистим кеш, если он существует
-        cacheSystem.removeProjectCache(project.getId());
+        // чистим неактуальный кеш проекта
+        cacheSystem.clearProjectCacheContent(project.getId());
 
 
     }
@@ -601,8 +601,8 @@ public class ProjectService {
             throw new Exception(e.getMessage());
         }
 
-        // удаляем кеш - он потерял актуальность
-        cacheSystem.removeProjectCache(project.getId());
+        // чистим кеш - он потерял актуальность
+        cacheSystem.clearProjectCacheContent(project.getId());
     }
 
 
@@ -666,8 +666,8 @@ public class ProjectService {
         fileRepository.delete(file);
         Files.delete(Path.of(fullPath));
 
-        // удаляем кеш - он потерял актуальность
-        cacheSystem.removeProjectCache(project.getId());
+        // подчищаем кеш - он потерял актуальность
+        cacheSystem.clearProjectCacheContent(project.getId());
 
 
 

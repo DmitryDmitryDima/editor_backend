@@ -15,6 +15,7 @@ import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
@@ -35,7 +36,13 @@ public class CodeAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
 
 
+    // генерируем публичное api файла
+    public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
+        CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
 
+        return file;
+
+    }
 
 
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){

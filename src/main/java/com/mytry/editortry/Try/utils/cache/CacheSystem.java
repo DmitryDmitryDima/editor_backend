@@ -1,14 +1,9 @@
 package com.mytry.editortry.Try.utils.cache;
 
-import com.mytry.editortry.Try.model.Project;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -32,12 +27,36 @@ public class CacheSystem {
     public synchronized void setProjectChange(Long projectId){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache!=null){
-            projectCache.setLastModified(Instant.now());
+            projectCache.notifyUpdate();
+        }
+    }
+
+    public synchronized void updateProjectCache(Long projectId,
+                                                Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation,
+                                                Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation){
+
+    }
+
+    // метод вызывается каждый раз, когда сохраняется файл. Помним, что работаем с двумя ассоциациями сразу,
+    // поэтому разумнее не перезаписывать объект вообще
+    public synchronized void updateFileCache(Long projectId, Long fileId, CacheSuggestionInnerProjectFile type){
+        ProjectCache projectCache = projectsCaches.get(projectId);
+        if (projectCache != null){
+            projectCache.updateFileCache(fileId, type);
         }
     }
 
 
     // уведомляем систему о том, что в проекте произошли значительные изменения, делающие кеш неактуальным
+    public synchronized void clearProjectCacheContent(Long projectId){
+        ProjectCache projectCache = projectsCaches.get(projectId);
+        if (projectCache!=null){
+            // чистим файловый контент, но не трогаем трекер подписчиков и прочую инфу
+            projectCache.clearExpiredCache();
+        }
+    }
+
+    // полное стирание кеша - когда проект не имеет подписчиков
     public synchronized void removeProjectCache(Long projectId){
         projectsCaches.remove(projectId);
     }

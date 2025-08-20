@@ -1,25 +1,16 @@
 package com.mytry.editortry.Try.utils.cache;
 
-import com.mytry.editortry.Try.dto.basicsuggestion.CacheSuggestionInnerProjectType;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.time.Instant;
 import java.util.*;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+
 public class ProjectCache {
 
 
     // специальный обработчик будет чистить устаревший кеш, если таковой имеется
     private Instant lastModified = Instant.now();
 
-    // пара - id файла - кеш файла - его публичный api
-    // кеш файла меняется при действиях с ним
-    private Map<Long, FileCache> fileCashes = new HashMap<>();
+
 
     // список подписчиков - если 0. кеш проекта стирается
     private final Set<String> subscribers = new HashSet<>();
@@ -30,24 +21,39 @@ public class ProjectCache {
      */
 
     // ассоциация - пакет = файлы
-    private final Map<String, List<CacheSuggestionInnerProjectType>> packageToFileAssociation = new HashMap<>();
+    private Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation;
+
+
 
     // ассоциация - айди файла = файл
-    private final Map<Long, CacheSuggestionInnerProjectType> idToFileAssociation = new HashMap<>();
+    private Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation;
 
 
 
 
 
-
-
-
-    public Instant getLastModified() {
-        return lastModified;
+    // фиксируем последнее изменение в проекте
+    public void notifyUpdate(){
+        lastModified = Instant.now();
     }
 
-    public void setLastModified(Instant lastModified) {
-        this.lastModified = lastModified;
+    // чистим неактуальный кеш
+    public void clearExpiredCache(){
+        idToFileAssociation = null;
+        packageToFileAssociation = null;
+    }
+
+
+
+    /*
+    потенциальная логика чистильщика кешей
+    - если нет подписчиков - удаление
+    - если есть подписчики, но последнее обновление больше некоторого времени назад - удаление
+     */
+
+    // вспомогательный метод для статистики, обработчика неактуальных кешей
+    public Instant getLastUpdate() {
+        return lastModified;
     }
 
     // вспомогательный метод для статистики / обработчика зависших кешей
@@ -70,19 +76,29 @@ public class ProjectCache {
 
 
 
+    // геттеры и сеттеры для работы с кешированной структурой проекта
 
+    public Map<Long, CacheSuggestionInnerProjectFile> getIdToFileAssociation() {
+        return idToFileAssociation;
+    }
 
+    public void setIdToFileAssociation(Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation) {
+        this.idToFileAssociation = idToFileAssociation;
+    }
 
+    public Map<String, List<CacheSuggestionInnerProjectFile>> getPackageToFileAssociation() {
+        return packageToFileAssociation;
+    }
 
+    public void setPackageToFileAssociation(Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation) {
+        this.packageToFileAssociation = packageToFileAssociation;
+    }
 
-
-
-
-
-
-
-
-
-
-
+    // логика точечного обновления файлового кеша с сохранением объекта
+    public void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo){
+        CacheSuggestionInnerProjectFile fileCache = idToFileAssociation.get(fileId);
+        if (fileCache!=null){
+            fileCache.updateTypeStructureFrom(typeInfo);
+        }
+    }
 }

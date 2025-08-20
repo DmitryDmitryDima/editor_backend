@@ -61,7 +61,9 @@ public class EditorService {
 
 
 
-
+    /*
+    логика извлечения из кеша - если кеш проекта пустой (ассоциации = null), то мы должны его пересобрать
+     */
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
 
         // формирование внешней предложки - первоначально происходит обращение к кешу по project id
@@ -85,8 +87,9 @@ public class EditorService {
 
     сохранение файла
 
-    todo Операция с кешем - точечно обновляем кеш файла через id
-    Уведомляем кеш о том, что проект был изменен
+     ! Операции с кешем
+     - точечно обновляем кеш файла через id
+     - Уведомляем кеш о том, что проект был изменен
 
      */
     @Transactional(rollbackOn = Exception.class)
@@ -163,6 +166,16 @@ public class EditorService {
 
         // уведомляем кеш систему о том, что в проекте произошли изменения
         cacheSystem.setProjectChange(project.getId());
+
+        // точечно обновляем файловый кеш
+        try {
+            cacheSystem.updateFileCache(project.getId(),
+                    file.getId(),
+                    codeAnalyzer.generateFileCache(request.getContent()));
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
 
 
 

@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.dto.basicsuggestion;
+package com.mytry.editortry.Try.utils.cache;
 
 
 import lombok.AllArgsConstructor;
@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class CacheSuggestionOuterProjectType {
+public class CacheSuggestionOuterProjectFile {
 
     private String name;
 
