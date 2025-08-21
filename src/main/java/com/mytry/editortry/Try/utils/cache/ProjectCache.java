@@ -43,6 +43,11 @@ public class ProjectCache {
         packageToFileAssociation = null;
     }
 
+    // вспомогательный метод, вызывая который, мы решаем, проводить ли анализ кодовой базы проекта
+    public boolean isEmpty(){
+        return packageToFileAssociation == null && idToFileAssociation == null;
+    }
+
 
 
     /*

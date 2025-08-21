@@ -15,6 +15,7 @@ import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
@@ -36,13 +37,40 @@ public class CodeAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
 
 
-    // генерируем публичное api файла (учитываем, что может быть несколько типов)
+    // генерируем публичное api файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
 
         return file;
 
     }
+
+
+    // фомрмируем предложку на основе текущего состояния кода, а также контекста
+
+    public BasicSuggestionContextBasedInfo basicSuggestionContextBased(EditorBasicSuggestionRequest request){
+        BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
+        try {
+            String completedCode = makeCodeComplete(request);
+            prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
+            CompilationUnit c = StaticJavaParser.parse(completedCode);
+
+            // пока реализуем просто извлечение типов
+            c.getTypes().forEach(el->{
+                info.getTypes().add(el.getNameAsString());
+            });
+
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return info;
+    }
+
+
+
 
 
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){

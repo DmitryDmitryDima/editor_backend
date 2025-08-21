@@ -10,7 +10,25 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EditorBasicSuggestionAnswer {
-    private List<String> innerTypes;
+
+    /*
+    мгновенная предложка с учетом контекста и текущего состояния файла
+     */
+    private BasicSuggestionContextBasedInfo contextBasedInfo;
+
+
+    /*
+    предложка из проекта
+     */
+    private List<BasicSuggestionProjectType> outerTypes;
+
+    /*
+    в будущем - предложка из библиотек
+     */
+
+
+
+
 
 
 

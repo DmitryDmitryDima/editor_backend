@@ -66,13 +66,37 @@ public class EditorService {
      */
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
 
-        // формирование внешней предложки - первоначально происходит обращение к кешу по project id
-        // если он существует, значит он актуален
-        // todo cache system manipulation
+        EditorBasicSuggestionAnswer editorBasicSuggestionAnswer = new EditorBasicSuggestionAnswer();
+
+        /*
+        шаг 1 - Формирование context based предложки
+         */
+
+        editorBasicSuggestionAnswer.setContextBasedInfo(codeAnalyzer.basicSuggestionContextBased(request));
+
+        /*
+        шаг 2 - Формирование внешней предложки
+
+        тут мы должны вытянуть/сформировать кеш, отфильтровать его по "доступности" и введенному символу
+
+         */
+
+        // кеш существует
+        if (cacheSystem.checkProjectCacheState(request.getProject_id())){
+
+        }
+        // пересборка кеша
+        else {
+
+        }
+
+        // анализ кеша и формирование ответа
 
 
 
-        return codeAnalyzer.basicSuggestion(request);
+
+
+        return editorBasicSuggestionAnswer;
     }
 
 

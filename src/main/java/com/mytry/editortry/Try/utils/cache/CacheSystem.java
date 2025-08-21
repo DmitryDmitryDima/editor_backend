@@ -17,7 +17,7 @@ public class CacheSystem {
 
 
     // пара sessionId - id проекта
-    private final Map<String, Long> subscribersProjectsAssosiation = new HashMap<>();
+    private final Map<String, Long> subscribersProjectsAssociation = new HashMap<>();
 
 
 
@@ -35,6 +35,16 @@ public class CacheSystem {
                                                 Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation,
                                                 Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation){
 
+    }
+
+    public synchronized boolean checkProjectCacheState(Long projectId){
+        ProjectCache projectCache = projectsCaches.get(projectId);
+        if (projectCache!=null){
+            return projectCache.isEmpty();
+        }
+
+        // edge case - если кеша каким то образом не создалось при подключении...
+        return false;
     }
 
     // метод вызывается каждый раз, когда сохраняется файл. Помним, что работаем с двумя ассоциациями сразу,
@@ -72,7 +82,7 @@ public class CacheSystem {
 
 
         ProjectCache projectCache = projectsCaches.computeIfAbsent(projectId, k -> new ProjectCache());
-        subscribersProjectsAssosiation.put(sessionId, projectId);
+        subscribersProjectsAssociation.put(sessionId, projectId);
 
 
         projectCache.addSubscriber(sessionId);
@@ -84,7 +94,7 @@ public class CacheSystem {
     // удаляем подписчика и, если он последний, кеш
     public synchronized void removeProjectSubscription(String sessionId){
 
-        Long projectId = subscribersProjectsAssosiation.remove(sessionId);
+        Long projectId = subscribersProjectsAssociation.remove(sessionId);
 
 
         ProjectCache cache = projectsCaches.get(projectId);
