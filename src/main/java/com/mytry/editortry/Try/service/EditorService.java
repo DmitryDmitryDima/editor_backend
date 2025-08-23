@@ -1,8 +1,10 @@
 package com.mytry.editortry.Try.service;
 
 
+import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionProjectType;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
+import com.mytry.editortry.Try.dto.basicsuggestion.ProjectTypesDTO;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -10,9 +12,11 @@ import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
+import com.mytry.editortry.Try.model.User;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.service.codeanalyzis.CodeAnalyzer;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
@@ -28,7 +32,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class EditorService {
@@ -66,13 +73,15 @@ public class EditorService {
      */
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
 
+        //System.out.println(request);
+
         EditorBasicSuggestionAnswer editorBasicSuggestionAnswer = new EditorBasicSuggestionAnswer();
 
         /*
         шаг 1 - Формирование context based предложки
          */
 
-        editorBasicSuggestionAnswer.setContextBasedInfo(codeAnalyzer.basicSuggestionContextBased(request));
+        editorBasicSuggestionAnswer.setContextBasedInfo(codeAnalyzer.basicSuggestionContextBasedAnalysis(request));
 
         /*
         шаг 2 - Формирование внешней предложки
@@ -81,16 +90,61 @@ public class EditorService {
 
          */
 
-        // кеш существует
-        if (cacheSystem.checkProjectCacheState(request.getProject_id())){
+        // Проверяем, существует ли кеш
+        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem.getProjectCacheState(request.getProject_id());
 
-        }
+
         // пересборка кеша
-        else {
+        if (cache == null){
+            System.out.println("Формируем кеш проекта");
+            Project project = projectRepository
+                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
+            User owner = project.getOwner();
+            String projectname = project.getName();
 
+            List<String> mavenStructure = List.of("src", "main","java","com");
+
+            // com directory
+            Directory current = project.getRoot();
+            for (String s:mavenStructure){
+                Optional<Directory> candidate = current.getChildren().stream().filter(el->el.getName().equals(s)).findAny();
+                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
+                current = candidate.get();
+
+            }
+
+            // формируем путь, следуя классической maven структуре
+            String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
+
+            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
+            cache = projectTypesDTO.getPackageToFileAssociation();
+            // обновляем кеш
+            cacheSystem.updateProjectCache(request.getProject_id(),
+                    projectTypesDTO.getPackageToFileAssociation(),
+                    projectTypesDTO.getIdToFileAssociation() );
         }
 
-        // анализ кеша и формирование ответа
+        // todo анализ кеша и формирование ответа
+
+        System.out.println("Кеш "+ cache);
+
+        List<BasicSuggestionProjectType> types = new ArrayList<>();
+
+        for (Map.Entry<String, List<CacheSuggestionInnerProjectFile>> entry:cache.entrySet()){
+
+            List<CacheSuggestionInnerProjectFile> files = entry.getValue();
+
+            for (var f:files){
+                if (f.getPublicType().getName().startsWith(request.getText())){
+                    BasicSuggestionProjectType basicSuggestionProjectType = new BasicSuggestionProjectType();
+                    basicSuggestionProjectType.setPackageWay(f.getPackageWay());
+                    basicSuggestionProjectType.setName(f.getPublicType().getName());
+                    types.add(basicSuggestionProjectType);
+                }
+            }
+        }
+        editorBasicSuggestionAnswer.setOuterTypes(types);
+
 
 
 

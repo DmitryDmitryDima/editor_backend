@@ -18,4 +18,5 @@ public class EditorBasicSuggestionRequest {
     private Integer lineStart;
 
 
+
 }

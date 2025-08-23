@@ -33,18 +33,18 @@ public class ProjectCache {
 
 
     // фиксируем последнее изменение в проекте
-    public void notifyUpdate(){
+    public synchronized void notifyUpdate(){
         lastModified = Instant.now();
     }
 
     // чистим неактуальный кеш
-    public void clearExpiredCache(){
+    public synchronized void clearExpiredCache(){
         idToFileAssociation = null;
         packageToFileAssociation = null;
     }
 
     // вспомогательный метод, вызывая который, мы решаем, проводить ли анализ кодовой базы проекта
-    public boolean isEmpty(){
+    public synchronized boolean isEmpty(){
         return packageToFileAssociation == null && idToFileAssociation == null;
     }
 
@@ -57,12 +57,12 @@ public class ProjectCache {
      */
 
     // вспомогательный метод для статистики, обработчика неактуальных кешей
-    public Instant getLastUpdate() {
+    public synchronized Instant getLastUpdate() {
         return lastModified;
     }
 
     // вспомогательный метод для статистики / обработчика зависших кешей
-    public int getSubAmount(){
+    public synchronized int getSubAmount(){
         return subscribers.size();
     }
 
@@ -83,24 +83,24 @@ public class ProjectCache {
 
     // геттеры и сеттеры для работы с кешированной структурой проекта
 
-    public Map<Long, CacheSuggestionInnerProjectFile> getIdToFileAssociation() {
+    public synchronized Map<Long, CacheSuggestionInnerProjectFile> getIdToFileAssociation() {
         return idToFileAssociation;
     }
 
-    public void setIdToFileAssociation(Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation) {
+    public synchronized void setIdToFileAssociation(Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation) {
         this.idToFileAssociation = idToFileAssociation;
     }
 
-    public Map<String, List<CacheSuggestionInnerProjectFile>> getPackageToFileAssociation() {
+    public synchronized Map<String, List<CacheSuggestionInnerProjectFile>> getPackageToFileAssociation() {
         return packageToFileAssociation;
     }
 
-    public void setPackageToFileAssociation(Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation) {
+    public synchronized void setPackageToFileAssociation(Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation) {
         this.packageToFileAssociation = packageToFileAssociation;
     }
 
     // логика точечного обновления файлового кеша с сохранением объекта
-    public void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo){
+    public synchronized void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo){
         CacheSuggestionInnerProjectFile fileCache = idToFileAssociation.get(fileId);
         if (fileCache!=null){
             fileCache.updateTypeStructureFrom(typeInfo);

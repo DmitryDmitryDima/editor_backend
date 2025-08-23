@@ -16,6 +16,9 @@ import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSol
 
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
+import com.mytry.editortry.Try.dto.basicsuggestion.ProjectTypesDTO;
+import com.mytry.editortry.Try.model.Directory;
+import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
@@ -23,13 +26,15 @@ import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.nio.file.Path;
+import java.util.*;
 
 @Service
 public class CodeAnalyzer {
@@ -37,18 +42,133 @@ public class CodeAnalyzer {
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
 
 
+
+
     // генерируем публичное api файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
+        CompilationUnit c = StaticJavaParser.parse(code);
+
+        String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
+                .getNameAsString();
+        file.setPackageWay(packageDeclaration);
+
+        c.getTypes().forEach(el->{
+            if (el.isPublic()){
+                CacheSuggestionInnerProjectType cacheSuggestionType = new CacheSuggestionInnerProjectType();
+                cacheSuggestionType.setName(el.getNameAsString());
+                file.setPublicType(cacheSuggestionType);
+            }
+
+        });
+
 
         return file;
 
     }
 
 
+    // root path + layer + filename = > full way
+    private void collectAndAnalyzeFiles(ArrayList<String> layer,
+                                        Directory directory,
+                                        ProjectTypesDTO dto) throws Exception{
+
+        layer.add(directory.getName());
+
+
+        for (File f:directory.getFiles()){
+            if (f.getExtension().equals("java")){
+                StringBuilder filePath = new StringBuilder();
+
+                for (String s:layer){
+                    filePath.append(s);
+                    filePath.append("/");
+                }
+                filePath.append(f.getName()).append(".").append(f.getExtension());
+
+
+
+                java.io.File openedFile = new java.io.File(filePath.toString());
+
+                StringBuilder sb = new StringBuilder();
+
+                try (FileReader r = new FileReader(openedFile);
+                     BufferedReader bufferedReader = new BufferedReader(r);
+                ){
+
+                    String s;
+                    while ((s = bufferedReader.readLine())!=null){
+
+                        sb.append(s+"\n");
+                    }
+                }
+                catch (Exception e){
+                    throw new IllegalArgumentException("error while reading disk");
+                }
+
+                // заполняем dto
+                CacheSuggestionInnerProjectFile suggestion = generateFileCache(sb.toString());
+
+                // id ассоциация
+                dto.getIdToFileAssociation().put(f.getId(), suggestion);
+
+                // package ассоциация
+                Map<String, List<CacheSuggestionInnerProjectFile>> packages = dto.getPackageToFileAssociation();
+
+                var packageList = packages.get(suggestion.getPackageWay());
+                if (packageList == null){
+                    ArrayList<CacheSuggestionInnerProjectFile> list = new ArrayList<>();
+                    list.add(suggestion);
+                    packages.put(suggestion.getPackageWay(), list);
+                }
+
+
+
+
+
+            }
+
+        }
+        for (Directory ch:directory.getChildren()){
+            collectAndAnalyzeFiles(layer, ch, dto);
+        }
+
+        // удаляем пройденную директорию из пути
+        layer.remove(layer.size()-1);
+
+
+
+
+
+    }
+
+    // анализируем проект, собираем кеш
+    public ProjectTypesDTO analyzeProject(Directory root, String rootPath){
+
+        System.out.println(root);
+
+        ProjectTypesDTO projectTypesDTO = new ProjectTypesDTO();
+        try {
+
+            ArrayList<String> layer = new ArrayList<>();
+            layer.add(rootPath);
+
+
+
+            collectAndAnalyzeFiles(layer, root, projectTypesDTO);
+
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return projectTypesDTO;
+    }
+
+
     // фомрмируем предложку на основе текущего состояния кода, а также контекста
 
-    public BasicSuggestionContextBasedInfo basicSuggestionContextBased(EditorBasicSuggestionRequest request){
+    public BasicSuggestionContextBasedInfo basicSuggestionContextBasedAnalysis(EditorBasicSuggestionRequest request){
         BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
         try {
             String completedCode = makeCodeComplete(request);

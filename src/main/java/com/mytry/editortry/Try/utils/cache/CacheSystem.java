@@ -24,32 +24,39 @@ public class CacheSystem {
 
 
     // мы фиксируем момент последнего изменения кеша для того, чтобы специальный обработчик чистил зависшие старые кеши
-    public synchronized void setProjectChange(Long projectId){
+    public void setProjectChange(Long projectId){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache!=null){
             projectCache.notifyUpdate();
         }
     }
 
-    public synchronized void updateProjectCache(Long projectId,
+    // обновляем кеш проекта
+    public  void updateProjectCache(Long projectId,
                                                 Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation,
                                                 Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation){
 
-    }
-
-    public synchronized boolean checkProjectCacheState(Long projectId){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache!=null){
-            return projectCache.isEmpty();
+            projectCache.setIdToFileAssociation(idToFileAssociation);
+            projectCache.setPackageToFileAssociation(packageToFileAssociation);
         }
 
-        // edge case - если кеша каким то образом не создалось при подключении...
-        return false;
+    }
+
+
+
+    public Map<String, List<CacheSuggestionInnerProjectFile>> getProjectCacheState(Long projectId){
+        ProjectCache projectCache = projectsCaches.get(projectId);
+        if (projectCache!=null && !projectCache.isEmpty()){
+            return projectCache.getPackageToFileAssociation();
+        }
+        return null;
     }
 
     // метод вызывается каждый раз, когда сохраняется файл. Помним, что работаем с двумя ассоциациями сразу,
     // поэтому разумнее не перезаписывать объект вообще
-    public synchronized void updateFileCache(Long projectId, Long fileId, CacheSuggestionInnerProjectFile type){
+    public void updateFileCache(Long projectId, Long fileId, CacheSuggestionInnerProjectFile type){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache != null){
             projectCache.updateFileCache(fileId, type);
@@ -58,7 +65,7 @@ public class CacheSystem {
 
 
     // уведомляем систему о том, что в проекте произошли значительные изменения, делающие кеш неактуальным
-    public synchronized void clearProjectCacheContent(Long projectId){
+    public void clearProjectCacheContent(Long projectId){
         ProjectCache projectCache = projectsCaches.get(projectId);
         if (projectCache!=null){
             // чистим файловый контент, но не трогаем трекер подписчиков и прочую инфу
@@ -67,7 +74,7 @@ public class CacheSystem {
     }
 
     // полное стирание кеша - когда проект не имеет подписчиков
-    public synchronized void removeProjectCache(Long projectId){
+    public void removeProjectCache(Long projectId){
         projectsCaches.remove(projectId);
     }
 
@@ -78,7 +85,7 @@ public class CacheSystem {
 
 
 
-    public synchronized void addProjectSubscription(String sessionId, Long projectId){
+    public void addProjectSubscription(String sessionId, Long projectId){
 
 
         ProjectCache projectCache = projectsCaches.computeIfAbsent(projectId, k -> new ProjectCache());
@@ -92,7 +99,7 @@ public class CacheSystem {
 
 
     // удаляем подписчика и, если он последний, кеш
-    public synchronized void removeProjectSubscription(String sessionId){
+    public void removeProjectSubscription(String sessionId){
 
         Long projectId = subscribersProjectsAssociation.remove(sessionId);
 
