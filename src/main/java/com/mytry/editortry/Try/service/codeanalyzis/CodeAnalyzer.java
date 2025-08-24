@@ -121,6 +121,9 @@ public class CodeAnalyzer {
                     list.add(suggestion);
                     packages.put(suggestion.getPackageWay(), list);
                 }
+                else {
+                    packageList.add(suggestion);
+                }
 
 
 

@@ -134,6 +134,7 @@ public class EditorService {
 
             List<CacheSuggestionInnerProjectFile> files = entry.getValue();
 
+
             for (var f:files){
                 if (f.getPublicType().getName().startsWith(request.getText())){
                     BasicSuggestionProjectType basicSuggestionProjectType = new BasicSuggestionProjectType();
