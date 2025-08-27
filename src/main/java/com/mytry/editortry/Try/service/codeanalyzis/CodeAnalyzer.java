@@ -2,12 +2,18 @@ package com.mytry.editortry.Try.service.codeanalyzis;
 
 
 
+import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.TypeDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.github.javaparser.ast.expr.Expression;
 
 import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
@@ -33,13 +39,16 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class CodeAnalyzer {
 
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
+
+    private final List<String> objectMethods = List
+            .of("wait", "getClass", "hashCode","toString","clone", "equals", "notify", "notifyAll");
 
 
 
@@ -169,7 +178,9 @@ public class CodeAnalyzer {
     }
 
 
+
     // фомрмируем предложку на основе текущего состояния кода, а также контекста
+    // сразу фильтруем результат
 
     public BasicSuggestionContextBasedInfo basicSuggestionContextBasedAnalysis(EditorBasicSuggestionRequest request){
         BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
@@ -177,11 +188,227 @@ public class CodeAnalyzer {
             String completedCode = makeCodeComplete(request);
             prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
             CompilationUnit c = StaticJavaParser.parse(completedCode);
+            String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
+                    .getNameAsString();
+            info.setPackageWay(packageDeclaration);
 
-            // пока реализуем просто извлечение типов
-            c.getTypes().forEach(el->{
-                info.getTypes().add(el.getNameAsString());
+
+            // Извлекаем типы внутри рассматриваемого файла. Они доступны везде
+            c.getTypes().forEach(t->{
+                info.getTypes().add(t.getNameAsString());
             });
+
+
+            // отыскиваем тип, соответствующий позиции пользователя
+            Optional<TypeDeclaration<?>> type = c.getTypes().stream().filter(t->{
+                Range r = t.getRange().orElseThrow(()->new IllegalArgumentException("invalid type range"));
+                return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
+            }).findFirst();
+
+            // если пользователь совершает действия в диапазоне какого-либо типа
+            if (type.isPresent()){
+                TypeDeclaration<?> chosenType = type.get();
+                // далее - пользователь находится в методе или в теле класса или в конструкторе?
+                // если в методе - есть разница между статикой и нестатикой
+
+
+
+                List<String> staticMethods = new ArrayList<>();
+                List<String> staticFields = new ArrayList<>();
+                List<String> nonStaticMethods = new ArrayList<>();
+                List<String> nonStaticFields = new ArrayList<>();
+
+                nonStaticMethods.addAll(objectMethods.stream()
+                        .filter(el->el.startsWith(request.getText())).toList());
+
+                // собираем поля типа
+                chosenType.getFields().forEach(f->{
+                    if (f.isStatic()){
+
+                        f.findAll(VariableDeclarator.class).forEach(v->{
+
+                            if (v.getNameAsString().startsWith(request.getText())){
+                                staticFields.add(v.getNameAsString());
+                            }
+                        }
+                        );
+
+                    }
+                    else {
+
+                        f.findAll(VariableDeclarator.class).forEach(v->{
+
+                                    if (v.getNameAsString().startsWith(request.getText())){
+                                        nonStaticFields.add(v.getNameAsString());
+                                    }
+                        }
+
+                        );
+
+                    }
+                });
+
+                Optional<MethodDeclaration> methodDeclaration = chosenType.getMethods().stream().peek(m->{
+                    if (m.isStatic() && m.getNameAsString().startsWith(request.getText())){
+                        staticMethods.add(m.getNameAsString());
+                    }
+                    else if (!m.isStatic() && m.getNameAsString().startsWith(request.getText())) {
+                        nonStaticMethods.add(m.getNameAsString());
+                    }
+                }).filter(m->{
+                    Range r = m.getRange().orElseThrow(()->new IllegalArgumentException("invalid type range"));
+                    return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
+                }).findFirst();
+
+                // пользователь находится вне метода - он может быть в конструкторе или просто в теле...
+
+                if (methodDeclaration.isEmpty()){
+
+
+                    /*
+                    проверка на конструктор
+
+                     */
+
+                    Optional<ConstructorDeclaration> constructorDeclaration = chosenType.getConstructors().stream()
+                            .filter(co->{
+                                Range r = co.getRange().orElseThrow(()->new IllegalArgumentException("invalid constructor range"));
+                                return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
+                            }).findFirst();
+
+                    // вне конструктора
+                    if (constructorDeclaration.isEmpty()){
+                        List<String> availableKeywords = List.of("abstract", "enum", "record",
+                                "transient","int", "interface","private", "public", "protected",
+                                "sealed", "short", "static", "synchronized","double", "final", "float",
+                                "long","char", "class", "void", "volatile", "boolean", "byte","native","non-sealed"
+                        );
+                        info.setKeywords(availableKeywords.stream().filter(el->el.startsWith(request.getText())).toList());
+
+                    }
+
+                    // внутри конструктора
+                    else {
+                        ConstructorDeclaration constructor = constructorDeclaration.get();
+
+                        // добавляем и фильтруем статичные и не статичные методы класса
+                        List<String> availableKeywords = List.of("while","enum", "record","this", "try", "throw", "if", "int",
+                                "interface", "short", "super", "switch", "synchronized","do", "double", "final", "for", "float",
+                                "long", "class", "char","var","boolean", "byte","new"
+                                );
+                        info.setKeywords(availableKeywords.stream().filter(el->el.startsWith(request.getText())).toList());
+
+                        info.getMethods().addAll(nonStaticMethods);
+                        info.getMethods().addAll(staticMethods);
+                        info.getFields().addAll(staticFields);
+                        info.getFields().addAll(nonStaticFields);
+
+
+                        // извлекаем параметры
+                        constructor.getParameters().forEach(el->{
+
+
+                            if (el.getNameAsString().startsWith(request.getText())){
+
+                                info.getLocalVariables().add(el.getNameAsString());
+                            }
+                        });
+
+                        // работаем с телом - помним, что локальные переменные можно вписать только после их объявления
+                        BlockStmt body = constructor.getBody();
+
+                        body.findAll(VariableDeclarator.class).forEach(el->{
+                            Range r = el.getRange().orElseThrow(()->new IllegalArgumentException("invalid variable range"));
+                            if (r.end.line<= request.getLine() && el.getNameAsString().startsWith(request.getText())){
+                                info.getLocalVariables().add(el.getNameAsString());
+                            }
+
+
+                        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    }
+
+
+
+                }
+                // пользователь находится внутри метода - два сценария в зависимости от статичности контекста
+                else {
+                    MethodDeclaration method = methodDeclaration.get();
+
+
+                    // добавляем и фильтруем статичные и не статичные методы класса
+                    List<String> availableKeywords = List.of("while","enum", "record","this", "try", "throw", "if", "int",
+                            "interface", "short", "super", "switch", "synchronized","do", "double", "final", "for", "float",
+                            "long", "class", "char","var","boolean", "byte","new"
+                    );
+                    info.setKeywords(availableKeywords.stream().filter(el->el.startsWith(request.getText())).toList());
+
+                    // доступ к статичному контексту типа
+                    if (!method.isStatic()){
+                        info.getFields().addAll(nonStaticFields);
+                        info.getMethods().addAll(nonStaticMethods);
+                    }
+
+
+                    info.getFields().addAll(staticFields);
+                    info.getMethods().addAll(staticMethods);
+
+                    // извлекаем параметры
+                    method.getParameters().forEach(el->{
+
+
+                        if (el.getNameAsString().startsWith(request.getText())){
+
+                            info.getLocalVariables().add(el.getNameAsString());
+                        }
+                    });
+
+                    // работаем с телом - помним, что локальные переменные можно вписать только после их объявления
+                    Optional<BlockStmt> body = method.getBody();
+                    body.ifPresent(
+                            blockStmt -> blockStmt.findAll(VariableDeclarator.class)
+                                    .forEach(el ->
+                                    {
+                                        Range r = el.getRange().orElseThrow(() -> new IllegalArgumentException("invalid variable range"));
+                                        if (r.end.line <= request.getLine() && el.getNameAsString().startsWith(request.getText())) {
+                                            info.getLocalVariables().add(el.getNameAsString());
+                                        }
+
+
+                    }));
+
+
+
+
+                }
+
+
+
+
+            }
+
+            // если пользователь находится вне типа - ему доступны ключевые слова
+            else {
+                info.setOutsideOfType(true);
+                List<String> availableKeywords = List.of("enum", "record","import", "interface",
+                        "public","abstract","sealed","final","class","non-sealed");
+
+                info.setKeywords(availableKeywords.stream().filter(el->el.startsWith(request.getText())).toList());
+
+            }
 
 
         }

@@ -1,10 +1,7 @@
 package com.mytry.editortry.Try.service;
 
 
-import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionProjectType;
-import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
-import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
-import com.mytry.editortry.Try.dto.basicsuggestion.ProjectTypesDTO;
+import com.mytry.editortry.Try.dto.basicsuggestion.*;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -37,8 +34,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+
 @Service
 public class EditorService {
+
 
 
     // рабочая директория на диске
@@ -48,6 +47,9 @@ public class EditorService {
     // репозитории
     @Autowired
     private ProjectRepository projectRepository;
+
+
+
 
     @Autowired
     private FileRepository fileRepository;
@@ -68,6 +70,9 @@ public class EditorService {
 
 
 
+
+
+
     /*
     логика извлечения из кеша - если кеш проекта пустой (ассоциации = null), то мы должны его пересобрать
      */
@@ -77,11 +82,14 @@ public class EditorService {
 
         EditorBasicSuggestionAnswer editorBasicSuggestionAnswer = new EditorBasicSuggestionAnswer();
 
+
         /*
         шаг 1 - Формирование context based предложки
          */
 
-        editorBasicSuggestionAnswer.setContextBasedInfo(codeAnalyzer.basicSuggestionContextBasedAnalysis(request));
+        BasicSuggestionContextBasedInfo contextBasedInfo = codeAnalyzer.basicSuggestionContextBasedAnalysis(request);
+
+        editorBasicSuggestionAnswer.setContextBasedInfo(contextBasedInfo);
 
         /*
         шаг 2 - Формирование внешней предложки
@@ -138,7 +146,11 @@ public class EditorService {
             for (var f:files){
                 if (f.getPublicType().getName().startsWith(request.getText())){
                     BasicSuggestionProjectType basicSuggestionProjectType = new BasicSuggestionProjectType();
-                    basicSuggestionProjectType.setPackageWay(f.getPackageWay());
+                    // формируем импорт только в случае, если не совпадает package
+                    if (!contextBasedInfo.getPackageWay().equals(f.getPackageWay())){
+                        basicSuggestionProjectType.setPackageWay(f.getPackageWay());
+                    }
+                    //basicSuggestionProjectType.setPackageWay(f.getPackageWay());
                     basicSuggestionProjectType.setName(f.getPublicType().getName());
                     types.add(basicSuggestionProjectType);
                 }
