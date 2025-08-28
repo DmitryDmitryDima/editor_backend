@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +42,7 @@ public class Initializer implements CommandLineRunner {
 
     // для теста заполняем базу данных, основываясь на текущем состоянии файловой системы
     private void travelAndPersistWorkingDirectory(){
+
         String username = "dima";
         User user = new User();
         user.setUsername(username);
@@ -109,6 +112,7 @@ public class Initializer implements CommandLineRunner {
                     parentEntity.getChildren().add(child);
                     child.setParent(parentEntity);
                     prepareMyRoot(f, child);
+
                 }
 
                 else {
@@ -149,101 +153,12 @@ public class Initializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
 
         travelAndPersistWorkingDirectory();
-        /*
-        File file = new File();
-
-        file.setExtension("java");
-        file.setName("govno");
-        file.setStatus(FileStatus.DELETING);
-        fileRepository.save(file);
-
-         */
-        /*
-        User user = new User();
-        user.setUsername("dima");
-
-        String projectName = "demo";
-        String projectName1 = "demo2";
-
-        Directory root = new Directory();
-        root.setName(projectName);
-
-        Directory root1 = new Directory();
-        root1.setName(projectName1);
-
-        File file = new File();
-        file.setExtension("java");
-        file.setName("BinarySearch");
-
-        File file1 = new File();
-        file1.setExtension("java");
-        file1.setName("BinarySearch");
-
-
-
-        file.setParent(root);
-
-        List<File> rootFiles = new ArrayList<>();
-
-        rootFiles.add(file);
-
-        root.setFiles(rootFiles);
 
 
 
 
-        Directory sub = new Directory();
-        sub.setName("package");
-        sub.setParent(root);
-
-        Directory sub2 = new Directory();
-        sub2.setName("package1");
-        sub2.setParent(root);
-
-        Directory sub3 = new Directory();
-        sub3.setName("package3");
-        sub3.setParent(sub);
-
-        file1.setParent(sub3);
-
-        List<File> sub3Files = new ArrayList<>();
-        sub3Files.add(file1);
-        sub3.setFiles(sub3Files);
 
 
 
-        List<Directory> rootChildren = new ArrayList<>();
-        rootChildren.add(sub);
-        rootChildren.add(sub2);
-
-        List<Directory> subChildren = new ArrayList<>();
-        subChildren.add(sub3);
-
-        sub.setChildren(subChildren);
-
-        root.setChildren(rootChildren);
-
-        directoryRepository.save(root);
-        directoryRepository.save(root1);
-
-
-
-
-        Project project = new Project();
-        Project project1 = new Project();
-        project.setName(projectName);
-        project.setRoot(root);
-
-        project1.setName(projectName1);
-        project1.setRoot(root1);
-
-        userRepository.save(user);
-        project.setOwner(user);
-        project1.setOwner(user);
-
-        projectRepository.save(project);
-        projectRepository.save(project1);
-
-         */
     }
 }

@@ -1,5 +1,6 @@
 package com.mytry.editortry.Try.utils.cache;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -11,6 +12,10 @@ import java.util.Map;
 // происходит первая  подписка на файл или проект в целом = создается кеш проекта
 @Component
 public class CacheSystem {
+
+    // java standart library cache
+    @Autowired
+    private JavaStandartLibraryCache standartLibraryCache;
 
     // пара project_id : project cache
     private final Map<Long, ProjectCache> projectsCaches = new HashMap<>();

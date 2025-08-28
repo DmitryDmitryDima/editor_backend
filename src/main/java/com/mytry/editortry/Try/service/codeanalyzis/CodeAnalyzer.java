@@ -2,6 +2,7 @@ package com.mytry.editortry.Try.service.codeanalyzis;
 
 
 
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -33,6 +34,8 @@ import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectType;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,7 +43,6 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public class CodeAnalyzer {
@@ -53,7 +55,7 @@ public class CodeAnalyzer {
 
 
 
-    // генерируем публичное api файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
+    // генерируем публичное api внутреннего файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
         CompilationUnit c = StaticJavaParser.parse(code);
@@ -75,6 +77,44 @@ public class CodeAnalyzer {
         return file;
 
     }
+
+    // публичный api - тут только публичные методы
+    public CacheSuggestionOuterProjectType generateJavaFileOuterApi(String code){
+        CacheSuggestionOuterProjectType file = new CacheSuggestionOuterProjectType();
+        CompilationUnit c = StaticJavaParser.parse(code);
+
+        String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
+                .getNameAsString();
+        file.setPackageWay(packageDeclaration);
+
+        c.getTypes().forEach(el->{
+            if (el.isPublic()){
+                file.setName(el.getNameAsString());
+
+                el.getMethods().forEach(method->{
+                    if (method.isPublic()){
+                        file.getMethods().add(method.getNameAsString());
+                    }
+                });
+
+                el.getFields().forEach(fieldDeclaration -> {
+                    if (fieldDeclaration.isStatic() && fieldDeclaration.isPublic()){
+                        fieldDeclaration.findAll(VariableDeclarator.class).forEach(v->{
+                                    file.getFields().add(v.getNameAsString());
+
+                                }
+                        );
+                    }
+                });
+            }
+        });
+
+
+
+        return file;
+    }
+
+
 
 
     // root path + layer + filename = > full way
@@ -186,7 +226,7 @@ public class CodeAnalyzer {
         BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
         try {
             String completedCode = makeCodeComplete(request);
-            prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
+            //prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
             CompilationUnit c = StaticJavaParser.parse(completedCode);
             String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
                     .getNameAsString();
@@ -252,6 +292,7 @@ public class CodeAnalyzer {
                     if (m.isStatic() && m.getNameAsString().startsWith(request.getText())){
                         staticMethods.add(m.getNameAsString());
                     }
+
                     else if (!m.isStatic() && m.getNameAsString().startsWith(request.getText())) {
                         nonStaticMethods.add(m.getNameAsString());
                     }
@@ -428,7 +469,7 @@ public class CodeAnalyzer {
 
         try {
             String completedCode = makeCodeComplete(request);
-            prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
+            //prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
             CompilationUnit c = StaticJavaParser.parse(completedCode);
 
             // пример извлечения публичного типа и его методов из кода
@@ -459,7 +500,7 @@ public class CodeAnalyzer {
 
 
     public ImportAnswer importParsing(ImportRequest importRequest){
-        prepareParserConfigForDotSuggestion();
+        //prepareParserConfigForDotSuggestion();
 
         try {
             HashSet<String> imports = new HashSet<>();
@@ -537,7 +578,7 @@ public class CodeAnalyzer {
         try {
 
             String s = makeCodeComplete(request);
-            prepareParserConfigForDotSuggestion();
+            //prepareParserConfigForDotSuggestion();
             // парсим
             CompilationUnit c = StaticJavaParser.parse(s);
 
@@ -656,12 +697,14 @@ public class CodeAnalyzer {
 
 
     // конфигурируем парсер (пока не ясно, можно ли сделать эо один раз)
-    private void prepareParserConfigForDotSuggestion(){
+    @PostConstruct
+    public void prepareParserConfig(){
         // Конфигурация парсера
         CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
         combinedTypeSolver.add(new ReflectionTypeSolver());
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(combinedTypeSolver);
         StaticJavaParser.getParserConfiguration().setSymbolResolver(symbolSolver);
+        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
 
 
     }
