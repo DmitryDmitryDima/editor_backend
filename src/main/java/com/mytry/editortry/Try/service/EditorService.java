@@ -2,6 +2,8 @@ package com.mytry.editortry.Try.service;
 
 
 import com.mytry.editortry.Try.dto.basicsuggestion.*;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -66,6 +68,53 @@ public class EditorService {
 
     @Autowired
     private CodeAnalyzer codeAnalyzer;
+
+
+
+    /*
+    во многом опора идет на анализ импортируемых данных - с их помощью мы можем узнать,
+    какие типы нужно просканировать в кеше/зависимостях
+    в данном методе так же, при необходимости, нужно пересобирать кеш
+     */
+    public EditorDotSuggestionAnswer dotSuggestion(EditorDotSuggestionRequest request){
+
+        // шаг 1 - Проверка существования кеша проекта
+        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem.getProjectCacheState(request.getProject_id());
+
+
+        // пересборка кеша
+        if (cache == null){
+            System.out.println("Формируем кеш проекта");
+            Project project = projectRepository
+                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
+            User owner = project.getOwner();
+            String projectname = project.getName();
+
+            List<String> mavenStructure = List.of("src", "main","java","com");
+
+            // com directory
+            Directory current = project.getRoot();
+            for (String s:mavenStructure){
+                Optional<Directory> candidate = current.getChildren().stream().filter(el->el.getName().equals(s)).findAny();
+                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
+                current = candidate.get();
+
+            }
+
+            // формируем путь, следуя классической maven структуре
+            String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
+
+            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
+            cache = projectTypesDTO.getPackageToFileAssociation();
+            // обновляем кеш
+            cacheSystem.updateProjectCache(request.getProject_id(),
+                    projectTypesDTO.getPackageToFileAssociation(),
+                    projectTypesDTO.getIdToFileAssociation() );
+        }
+
+
+        return codeAnalyzer.dotSuggestion(request, cache);
+    }
 
 
 
@@ -134,7 +183,7 @@ public class EditorService {
 
         // todo анализ кеша и формирование ответа
 
-        System.out.println("Кеш "+ cache);
+
 
         List<BasicSuggestionType> types = new ArrayList<>();
 
@@ -169,7 +218,7 @@ public class EditorService {
                 basicSuggestionType.setPackageWay(el.getPackageWay());
                 outer.add(basicSuggestionType);
             });
-            
+
             editorBasicSuggestionAnswer.setOuterTypes(outer);
         }
 

@@ -2,11 +2,12 @@ package com.mytry.editortry.Try.service.codeanalyzis;
 
 
 
-import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.JavaParser;
 import com.github.javaparser.Range;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 
+import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
@@ -16,28 +17,27 @@ import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
 import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
-import com.github.javaparser.symbolsolver.JavaSymbolSolver;
-import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 
-import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.dto.basicsuggestion.ProjectTypesDTO;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.*;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.DotSuggestionRequest;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportAnswer;
 import com.mytry.editortry.Try.dto.importsuggestion.ImportRequest;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectType;
-import jakarta.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -47,7 +47,14 @@ import java.util.*;
 @Service
 public class CodeAnalyzer {
 
+
+
+    @Autowired
+    private JavaParser parser;
+
     private static final Logger logger = LoggerFactory.getLogger(CodeAnalyzer.class);
+
+
 
     private final List<String> objectMethods = List
             .of("wait", "getClass", "hashCode","toString","clone", "equals", "notify", "notifyAll");
@@ -55,10 +62,147 @@ public class CodeAnalyzer {
 
 
 
+    public EditorDotSuggestionAnswer dotSuggestion(EditorDotSuggestionRequest request,
+                                                   Map<String, List<CacheSuggestionInnerProjectFile>> cache){
+
+
+
+        EditorDotSuggestionAnswer dotSuggestionAnswer = new EditorDotSuggestionAnswer();
+        String code = makeCodeComplete(request);
+
+
+
+        CompilationUnit c = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
+
+        // извлекаем импорты, чтобы потом соотнести тип с импортом
+        List<String> imports = c.getImports().stream().map(ImportDeclaration::getNameAsString).toList();
+
+
+        // извлекаем выражения, соответствующие позиции user
+        List<FieldAccessExpr> fieldAccessExprs = c.findAll(FieldAccessExpr.class)
+                .stream().filter(exp->{
+                    if (exp.getRange().isEmpty()) return false;
+                    return exp.getRange().get().begin.line==request.getLine();
+                }).toList();
+
+        System.out.println(fieldAccessExprs);
+
+        // если таким выражения есть, пытаемся извлечь тип
+        if (!fieldAccessExprs.isEmpty()){
+            FieldAccessExpr fe = fieldAccessExprs.get(0);
+
+            Expression e = fe.getScope();
+
+
+            try {
+                var resolvedType = e.calculateResolvedType();
+
+                // отдельная обработка массива
+                if (resolvedType.isArray()){
+                    List<String> methods = List.of("clone");
+                    List<String> fields = List.of("length");
+                    dotSuggestionAnswer.setMethods(methods);
+                    dotSuggestionAnswer.setFields(fields);
+
+                    return dotSuggestionAnswer;
+                }
+
+
+
+                List<String> methods = e.calculateResolvedType().asReferenceType().getAllMethods()
+                        .stream().filter(m ->
+                                m.accessSpecifier().asString().equals("public")
+                                        ||
+                                        m.accessSpecifier().asString().isEmpty())
+                        .map(ResolvedDeclaration::getName).distinct().toList();
+
+
+                List<String> fields = e.calculateResolvedType().asReferenceType().getDeclaredFields()
+                        .stream().filter(f->
+                                f.accessSpecifier().asString().equals("public")).map(ResolvedDeclaration::getName).distinct().toList();
+
+
+
+                dotSuggestionAnswer.setMethods(methods);
+                dotSuggestionAnswer.setFields(fields);
+
+            }
+            catch (UnsolvedSymbolException exception){
+
+
+                // скорее всего тип относится к импорту
+                String[] expressionDetails = e.toString().split("\\.");
+
+                // пока что рассматриваем сценарий одной точки
+                String root = expressionDetails[0];
+                String rootType = null;
+
+                // сценарий - если это переменная - также это может быть вызов из класса
+                for (VariableDeclarator vr:c.findAll(VariableDeclarator.class)){
+                    if (vr.getNameAsString().equals(root)){
+
+                        rootType = vr.getTypeAsString();
+                    }
+                }
+
+                // тип не найден - возвращаем пустой ответ
+                if (rootType == null){
+                    return dotSuggestionAnswer;
+                }
+                // ищем совпадающий импорт
+                else {
+                    String matchingImport = null;
+                    for (String i:imports){
+                        if (i.endsWith(rootType)){
+                            matchingImport = i;
+                        }
+                    }
+
+                    if (matchingImport == null){
+                        return dotSuggestionAnswer;
+                    }
+                    else {
+                        // ищем в кеше
+                        String way = matchingImport.substring(0, matchingImport.length()-rootType.length()-1);
+
+                        List<CacheSuggestionInnerProjectFile> files = cache.get(way);
+                        for (var f:files){
+                            // todo если package совпадает, мы должны смотреть не только публичные методы
+                            if (f.getPublicType().getName().equals(rootType)){
+
+                                dotSuggestionAnswer.setMethods(f.getPublicType().getMethods());
+                                dotSuggestionAnswer.setFields(f.getPublicType().getFields());
+                            }
+                        }
+
+                    }
+                }
+
+
+
+
+
+            }
+
+
+
+            //ResolvedType resolvedType = e.calculateResolvedType();
+
+        }
+
+
+
+        return dotSuggestionAnswer;
+
+    }
+
+
+
+
     // генерируем публичное api внутреннего файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
-        CompilationUnit c = StaticJavaParser.parse(code);
+        CompilationUnit c = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
 
         String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
                 .getNameAsString();
@@ -81,7 +225,7 @@ public class CodeAnalyzer {
     // публичный api - тут только публичные методы
     public CacheSuggestionOuterProjectType generateJavaFileOuterApi(String code){
         CacheSuggestionOuterProjectType file = new CacheSuggestionOuterProjectType();
-        CompilationUnit c = StaticJavaParser.parse(code);
+        CompilationUnit c = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
 
         String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
                 .getNameAsString();
@@ -226,8 +370,8 @@ public class CodeAnalyzer {
         BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
         try {
             String completedCode = makeCodeComplete(request);
-            //prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
-            CompilationUnit c = StaticJavaParser.parse(completedCode);
+
+            CompilationUnit c = parser.parse(completedCode).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
             String packageDeclaration = (c.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
                     .getNameAsString();
             info.setPackageWay(packageDeclaration);
@@ -469,8 +613,8 @@ public class CodeAnalyzer {
 
         try {
             String completedCode = makeCodeComplete(request);
-            //prepareParserConfigForDotSuggestion(); // todo - не ясно, будут ли вообще отличия в конфигурации
-            CompilationUnit c = StaticJavaParser.parse(completedCode);
+
+            CompilationUnit c = parser.parse(completedCode).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
 
             // пример извлечения публичного типа и его методов из кода
             c.getTypes().forEach(el->{
@@ -504,7 +648,8 @@ public class CodeAnalyzer {
 
         try {
             HashSet<String> imports = new HashSet<>();
-            CompilationUnit c = StaticJavaParser.parse(importRequest.getCode());
+            CompilationUnit c = parser.parse(importRequest.getCode())
+                    .getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
             // тестируем возможности определения типов, не импортированных ранее
             // суть алгоритма заключается в том, что мы проверяем существование класса с помощью рефлексии
             // это работает для внутренних java классов, для классов, внешних по отношению к проекту, мы должны загрузить свой resolver
@@ -556,6 +701,11 @@ public class CodeAnalyzer {
 
     }
 
+    private String makeCodeComplete(EditorDotSuggestionRequest request){
+        return request.getCode().substring(0, request.getPosition())
+                +"dummy;"+request.getCode().substring(request.getPosition()+1);
+    }
+
     private String makeCodeComplete(EditorBasicSuggestionRequest request){
         int lineStart = request.getLineStart();
         String code = request.getCode();
@@ -580,14 +730,8 @@ public class CodeAnalyzer {
             String s = makeCodeComplete(request);
             //prepareParserConfigForDotSuggestion();
             // парсим
-            CompilationUnit c = StaticJavaParser.parse(s);
-
-
-
-
-
-
-
+            CompilationUnit c = parser.parse(s).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
+            System.out.println(StaticJavaParser.getParserConfiguration().getSymbolResolver());
 
 
             // извлекаем выражения, соответствующие позиции user
@@ -696,18 +840,7 @@ public class CodeAnalyzer {
 
 
 
-    // конфигурируем парсер (пока не ясно, можно ли сделать эо один раз)
-    @PostConstruct
-    public void prepareParserConfig(){
-        // Конфигурация парсера
-        CombinedTypeSolver combinedTypeSolver = new CombinedTypeSolver();
-        combinedTypeSolver.add(new ReflectionTypeSolver());
-        JavaSymbolSolver symbolSolver = new JavaSymbolSolver(combinedTypeSolver);
-        StaticJavaParser.getParserConfiguration().setSymbolResolver(symbolSolver);
-        StaticJavaParser.getParserConfiguration().setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_21);
 
-
-    }
 
 
 

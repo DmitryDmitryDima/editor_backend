@@ -2,6 +2,8 @@ package com.mytry.editortry.Try.api;
 
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -50,6 +52,12 @@ public class EditorAPI {
 
         return ResponseEntity.ok(editorService.basicSuggestion(request));
 
+    }
+
+    // предложка для точки
+    @PostMapping("/completions/dot")
+    public ResponseEntity<EditorDotSuggestionAnswer> dotSuggestion(@RequestBody EditorDotSuggestionRequest request){
+        return ResponseEntity.ok(editorService.dotSuggestion(request));
     }
 
 }

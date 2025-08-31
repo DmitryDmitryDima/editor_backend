@@ -19,10 +19,10 @@ import java.util.List;
 public class DotSuggestionAnswer {
 
     // методы - в будущем можно разделить на публичные и не очень
-    List<String> methods;
+    List<String> methods = new ArrayList<>();
 
     // поля
-    List<String> fields;
+    List<String> fields = new ArrayList<>();
 
 
 
