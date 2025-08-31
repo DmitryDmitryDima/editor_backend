@@ -23,7 +23,7 @@ import java.util.zip.ZipFile;
 // для интереса можно реализовать что-то вроде статистики вызовов
 @Component
 public class JavaStandartLibraryCache {
-    @Value("common.directory")
+    @Value("${common.directory}")
     private String project_commons_path;
 
     private final String basicPath = "java.base/java/";
@@ -49,6 +49,23 @@ public class JavaStandartLibraryCache {
 
 
 
+    // возвращаем список типов, соответствующих введенному пользователем фрагменту
+    public List<CacheSuggestionOuterProjectType> getTypesByFragment(String fragment){
+
+        String firstLetter = fragment.substring(0,1);
+
+        List<CacheSuggestionOuterProjectType> list=cache.get(firstLetter);
+
+        if (list == null){
+            return List.of();
+        }
+        else {
+            return list.stream().filter(el->el.getName().startsWith(fragment)).toList();
+        }
+    }
+
+
+
     // load serialized cache or generate new cache
     @PostConstruct
     public void initCache() throws Exception {
@@ -60,9 +77,10 @@ public class JavaStandartLibraryCache {
             try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(serPath))) {
                 HashMap<String, List<CacheSuggestionOuterProjectType>> read =
                         (HashMap<String, List<CacheSuggestionOuterProjectType>>) in.readObject();
+                cache = read;
 
-                System.out.println(read);
-                System.out.println("serialization result");
+                //System.out.println(read);
+                //System.out.println("serialization result");
                 return;
 
             }
@@ -150,6 +168,7 @@ public class JavaStandartLibraryCache {
 
     private void serializeCache() throws Exception{
         String path = project_commons_path+"standart_cache.bat";
+        System.out.println(path);
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(path))) {
 
             out.writeObject(cache);

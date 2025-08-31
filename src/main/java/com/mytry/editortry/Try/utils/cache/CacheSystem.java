@@ -26,6 +26,9 @@ public class CacheSystem {
 
 
 
+    public List<CacheSuggestionOuterProjectType> getStandartLibraryTypesByFragment(String fragment){
+        return standartLibraryCache.getTypesByFragment(fragment);
+    }
 
 
     // мы фиксируем момент последнего изменения кеша для того, чтобы специальный обработчик чистил зависшие старые кеши

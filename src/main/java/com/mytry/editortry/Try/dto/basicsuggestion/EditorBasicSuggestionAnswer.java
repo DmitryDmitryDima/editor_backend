@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -20,12 +21,14 @@ public class EditorBasicSuggestionAnswer {
     /*
     предложка из проекта
      */
-    private List<BasicSuggestionProjectType> outerTypes;
+    private List<BasicSuggestionType> projectTypes = new ArrayList<>();
+
 
     /*
     в будущем - предложка из библиотек
      */
 
+    private List<BasicSuggestionType> outerTypes = new ArrayList<>();
 
 
 

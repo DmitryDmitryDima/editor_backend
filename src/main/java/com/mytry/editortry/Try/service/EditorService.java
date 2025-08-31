@@ -136,7 +136,7 @@ public class EditorService {
 
         System.out.println("Кеш "+ cache);
 
-        List<BasicSuggestionProjectType> types = new ArrayList<>();
+        List<BasicSuggestionType> types = new ArrayList<>();
 
         for (Map.Entry<String, List<CacheSuggestionInnerProjectFile>> entry:cache.entrySet()){
 
@@ -145,18 +145,35 @@ public class EditorService {
 
             for (var f:files){
                 if (f.getPublicType().getName().startsWith(request.getText())){
-                    BasicSuggestionProjectType basicSuggestionProjectType = new BasicSuggestionProjectType();
+                    BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
                     // формируем импорт только в случае, если не совпадает package
                     if (!contextBasedInfo.getPackageWay().equals(f.getPackageWay())){
-                        basicSuggestionProjectType.setPackageWay(f.getPackageWay());
+                        basicSuggestionType.setPackageWay(f.getPackageWay());
                     }
                     //basicSuggestionProjectType.setPackageWay(f.getPackageWay());
-                    basicSuggestionProjectType.setName(f.getPublicType().getName());
-                    types.add(basicSuggestionProjectType);
+                    basicSuggestionType.setName(f.getPublicType().getName());
+                    types.add(basicSuggestionType);
                 }
             }
         }
-        editorBasicSuggestionAnswer.setOuterTypes(types);
+        editorBasicSuggestionAnswer.setProjectTypes(types);
+
+        // формируем предложку из внешних библиотек - пока что только java. данная предложка доступна только для позици внутри типа
+        if (!contextBasedInfo.isOutsideOfType()){
+
+            List<BasicSuggestionType> outer = new ArrayList<>();
+            var javaLibrarySuggestion = cacheSystem.getStandartLibraryTypesByFragment(request.getText());
+            javaLibrarySuggestion.forEach(el->{
+                BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
+                basicSuggestionType.setName(el.getName());
+                basicSuggestionType.setPackageWay(el.getPackageWay());
+                outer.add(basicSuggestionType);
+            });
+            
+            editorBasicSuggestionAnswer.setOuterTypes(outer);
+        }
+
+
 
 
 

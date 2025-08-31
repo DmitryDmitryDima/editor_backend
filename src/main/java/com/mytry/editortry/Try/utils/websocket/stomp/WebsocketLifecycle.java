@@ -37,6 +37,10 @@ public class WebsocketLifecycle {
             String[] topicDivided = topic.split("/");
 
             Long projectId = Long.valueOf(topicDivided[0]);
+            Long fileId = null;
+            if (topicDivided.length==2){
+                fileId = Long.valueOf(topicDivided[1]);
+            }
             cacheSystem.addProjectSubscription(headerAccessor.getSessionId(), projectId);
 
         }

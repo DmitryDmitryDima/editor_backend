@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class BasicSuggestionProjectType {
+public class BasicSuggestionType {
 
     private String packageWay;
     private String name;
