@@ -199,7 +199,7 @@ public class CodeAnalyzer {
 
 
 
-    // генерируем публичное api внутреннего файла (учитываем, что может быть несколько типов) - метод используется как в точечном анализе, так и в глобальном
+    // публичные и default данные
     public CacheSuggestionInnerProjectFile generateFileCache(String code) throws Exception{
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
         CompilationUnit c = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
@@ -213,6 +213,11 @@ public class CodeAnalyzer {
                 CacheSuggestionInnerProjectType cacheSuggestionType = new CacheSuggestionInnerProjectType();
                 cacheSuggestionType.setName(el.getNameAsString());
                 file.setPublicType(cacheSuggestionType);
+                el.getMethods().forEach(m->{
+                    if (m.isPublic()){
+                        cacheSuggestionType.getMethods().add(m.getNameAsString());
+                    }
+                });
             }
 
         });
@@ -222,7 +227,7 @@ public class CodeAnalyzer {
 
     }
 
-    // публичный api - тут только публичные методы
+    // публичный api - тут только публичные методы и типы
     public CacheSuggestionOuterProjectType generateJavaFileOuterApi(String code){
         CacheSuggestionOuterProjectType file = new CacheSuggestionOuterProjectType();
         CompilationUnit c = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
