@@ -1,9 +1,9 @@
 package com.mytry.editortry.Try.service;
 
 
-import com.mytry.editortry.Try.dto.basicsuggestion.*;
-import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
-import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -11,14 +11,14 @@ import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
-import com.mytry.editortry.Try.model.User;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
-import com.mytry.editortry.Try.service.codeanalyzis.CodeAnalyzer;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
-import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
+import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
+import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,282 +26,103 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 
 @Service
 public class EditorService {
 
 
-
-    // рабочая директория на диске
+    // рабочая директория на диске - проекты
     @Value("${files.directory}")
     private String disk_directory;
 
-    // репозитории
-    @Autowired
-    private ProjectRepository projectRepository;
-
-
-
-
-    @Autowired
-    private FileRepository fileRepository;
-
-    // вебсокет уведомления
-    @Autowired
-    private SimpMessagingTemplate notifier;
-
-    // cache system
+    // кеш приложения - отсюда мы берем кеш проекта и внешних зависимостей
     @Autowired
     private CacheSystem cacheSystem;
 
 
+    // репозитории
 
     @Autowired
-    private CodeAnalyzer codeAnalyzer;
+    private ProjectRepository projectRepository;
+    @Autowired
+    private FileRepository fileRepository;
 
 
+    // точка для передачи вебсокет сообщений
+    @Autowired
+    private SimpMessagingTemplate notifier;
 
     /*
-    во многом опора идет на анализ импортируемых данных - с их помощью мы можем узнать,
-    какие типы нужно просканировать в кеше/зависимостях
-    в данном методе так же, при необходимости, нужно пересобирать кеш
+    заранее конфигурированный java parser для анализа кода
      */
-    public EditorDotSuggestionAnswer dotSuggestion(EditorDotSuggestionRequest request){
+    @Autowired
+    private JavaParser parser;
 
-        // шаг 1 - Проверка существования кеша проекта
-        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem.getProjectCacheState(request.getProject_id());
-
-
-        // пересборка кеша
-        if (cache == null){
-            System.out.println("Формируем кеш проекта");
-            Project project = projectRepository
-                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
-            User owner = project.getOwner();
-            String projectname = project.getName();
-
-            List<String> mavenStructure = List.of("src", "main","java","com");
-
-            // com directory
-            Directory current = project.getRoot();
-            for (String s:mavenStructure){
-                Optional<Directory> candidate = current.getChildren().stream().filter(el->el.getName().equals(s)).findAny();
-                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
-                current = candidate.get();
-
-            }
-
-            // формируем путь, следуя классической maven структуре
-            String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
-
-            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
-            cache = projectTypesDTO.getPackageToFileAssociation();
-            // обновляем кеш
-            cacheSystem.updateProjectCache(request.getProject_id(),
-                    projectTypesDTO.getPackageToFileAssociation(),
-                    projectTypesDTO.getIdToFileAssociation() );
-        }
-
-
-        return codeAnalyzer.dotSuggestion(request, cache);
-    }
-
-
+    /*методы класса object*/
+    private final List<String> objectMethods = List
+            .of("wait", "getClass", "hashCode","toString","clone", "equals", "notify", "notifyAll");
 
 
 
 
 
     /*
-    логика извлечения из кеша - если кеш проекта пустой (ассоциации = null), то мы должны его пересобрать
+    Сохранение текущего состояния файла
+    Запрос будет защищен при введении security, поэтому он опирается на посылаемые id проекта и файла
+    Операция сохранения взаимодействует с диском (запись), кешем (обновление file api) и вебсокетом
+    Ивент посылается всем подписчикам проекта, заставляя их обновить содержимое их окон (в зависимости от их места в проекте)
      */
-    public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
 
-        //System.out.println(request);
-
-        EditorBasicSuggestionAnswer editorBasicSuggestionAnswer = new EditorBasicSuggestionAnswer();
-
-
-        /*
-        шаг 1 - Формирование context based предложки
-         */
-
-        BasicSuggestionContextBasedInfo contextBasedInfo = codeAnalyzer.basicSuggestionContextBasedAnalysis(request);
-
-        editorBasicSuggestionAnswer.setContextBasedInfo(contextBasedInfo);
-
-        /*
-        шаг 2 - Формирование внешней предложки
-
-        тут мы должны вытянуть/сформировать кеш, отфильтровать его по "доступности" и введенному символу
-
-         */
-
-        // Проверяем, существует ли кеш
-        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem.getProjectCacheState(request.getProject_id());
-
-
-        // пересборка кеша
-        if (cache == null){
-            System.out.println("Формируем кеш проекта");
-            Project project = projectRepository
-                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
-            User owner = project.getOwner();
-            String projectname = project.getName();
-
-            List<String> mavenStructure = List.of("src", "main","java","com");
-
-            // com directory
-            Directory current = project.getRoot();
-            for (String s:mavenStructure){
-                Optional<Directory> candidate = current.getChildren().stream().filter(el->el.getName().equals(s)).findAny();
-                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
-                current = candidate.get();
-
-            }
-
-            // формируем путь, следуя классической maven структуре
-            String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
-
-            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
-            cache = projectTypesDTO.getPackageToFileAssociation();
-            // обновляем кеш
-            cacheSystem.updateProjectCache(request.getProject_id(),
-                    projectTypesDTO.getPackageToFileAssociation(),
-                    projectTypesDTO.getIdToFileAssociation() );
-        }
-
-        // todo анализ кеша и формирование ответа
-
-
-
-        List<BasicSuggestionType> types = new ArrayList<>();
-
-        for (Map.Entry<String, List<CacheSuggestionInnerProjectFile>> entry:cache.entrySet()){
-
-            List<CacheSuggestionInnerProjectFile> files = entry.getValue();
-
-
-            for (var f:files){
-                if (f.getPublicType().getName().startsWith(request.getText())){
-                    BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
-                    // формируем импорт только в случае, если не совпадает package
-                    if (!contextBasedInfo.getPackageWay().equals(f.getPackageWay())){
-                        basicSuggestionType.setPackageWay(f.getPackageWay());
-                    }
-                    //basicSuggestionProjectType.setPackageWay(f.getPackageWay());
-                    basicSuggestionType.setName(f.getPublicType().getName());
-                    types.add(basicSuggestionType);
-                }
-            }
-        }
-        editorBasicSuggestionAnswer.setProjectTypes(types);
-
-        // формируем предложку из внешних библиотек - пока что только java. данная предложка доступна только для позици внутри типа
-        if (!contextBasedInfo.isOutsideOfType()){
-
-            List<BasicSuggestionType> outer = new ArrayList<>();
-            var javaLibrarySuggestion = cacheSystem.getStandartLibraryTypesByFragment(request.getText());
-            javaLibrarySuggestion.forEach(el->{
-                BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
-                basicSuggestionType.setName(el.getName());
-                basicSuggestionType.setPackageWay(el.getPackageWay());
-                outer.add(basicSuggestionType);
-            });
-
-            editorBasicSuggestionAnswer.setOuterTypes(outer);
-        }
-
-
-
-
-
-
-
-
-        return editorBasicSuggestionAnswer;
-    }
-
-
-
-
-
-
-
-
-
-    /*
-
-    сохранение файла
-
-     ! Операции с кешем
-     - точечно обновляем кеш файла через id
-     - Уведомляем кеш о том, что проект был изменен
-
-     */
     @Transactional(rollbackOn = Exception.class)
     public EditorFileSaveAnswer saveFile(EditorFileSaveRequest request){
+        EditorFileSaveAnswer answer = new EditorFileSaveAnswer();
 
-
-
-
-
-
-        EditorFileSaveAnswer editorFileSaveAnswer = new EditorFileSaveAnswer();
+        // загружаем сущность файла, проверяем. существует ли она
         File file = fileRepository.findById(request.getFile_id())
                 .orElseThrow(()->new IllegalArgumentException("invalid id"));
 
-
-        // СРАВНИВАЕМ ФРОНТЕНД ВРЕМЯ И ВРЕМЯ ПОСЛЕДНЕГО ИЗМЕНЕНИЯ - ЕСЛИ ИЗМЕНЕНИЕ в базе БЫЛО ПОЗЖЕ, ТО ЭТО РАССИНХРОН!
+        /* проверка на рассинхрон - если время последнего сохранения в базе позже,
+         чем время запроса на сохранение - пользователь пытается сохранить неактуальный текст
+         */
         Instant databaseTime = file.getUpdatedAt();
         Instant clientTime = request.getClientTime();
-
-
-
-
         if (databaseTime.isAfter(clientTime)){
             throw new IllegalArgumentException("time synchronization error");
         }
 
-
-
-
-
+        // конструируем путь к файлу на диске
         Project project = projectRepository.findById(request.getProject_id()).orElseThrow(()->
-            new IllegalArgumentException("invalid project id")
+                new IllegalArgumentException("invalid project id")
         );
 
-
         String username = project.getOwner().getUsername();
-
-        // вычисляем путь к файловой системе - проверка целостности выполняется только при fetch
         String disk_path = disk_directory+username+"/projects/"+project.getName()+"/"+request.getFull_path();
 
+        // записываем информацию на диск
         try (FileWriter writer = new FileWriter(disk_path)) {
             writer.write(request.getContent());
         } catch (IOException e) {
             throw new IllegalArgumentException("file update fail");
         }
 
-
-
-
-        // фиксируем время изменения файла для контроля изменений
+        // фиксируем время записи в базе данных и в ответе сервера
         Instant time = Instant.now();
         file.setUpdatedAt(time);
-        editorFileSaveAnswer.setUpdatedAt(time);
+        answer.setUpdatedAt(time);
 
-        // формируем событие изменения файла
+        /*
+        формируем и посылаем событие для вебсокет подписчиков
+        из запроса берем авторский ключ, который записываем в ивент.
+        Так автор события не будет реагировать на свое же действие
+        todo данный функционал может изменится с введением авторизации через токены
+         */
         RealtimeEvent realtimeEvent = new RealtimeEvent();
         realtimeEvent.setType(EventType.FILE_SAVE);
         realtimeEvent.setTime(time);
@@ -310,126 +131,221 @@ public class EditorService {
         fileSaveInfo.setFile_id(file.getId());
         realtimeEvent.setMetaInfo(fileSaveInfo);
 
-        // клиентский одноразовый ключ для идентификации ивента
-        realtimeEvent.setEvent_id(request.getEvent_id());
 
-        // информация отправляется на два направления
+        realtimeEvent.setEvent_id(request.getEvent_id()); // пробрасываем ключ
+
+        // информация отправляется на два направления - для подписчиков главной страницы проекта, а также файлов
         notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
         notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
 
 
+        /*
+        операции с кешем
+         - пересобираем api файла (внутренний для проекта) с помощью java parser
+         - вносим его в кеш, передавая время обновления
+         */
 
-
-
-        // уведомляем кеш систему о том, что в проекте произошли изменения
-        cacheSystem.setProjectChange(project.getId());
-
-        // точечно обновляем файловый кеш
-        try {
-            cacheSystem.updateFileCache(project.getId(),
-                    file.getId(),
-                    codeAnalyzer.generateFileCache(request.getContent()));
+        ProjectCache projectCache;
+        try{
+            projectCache = cacheSystem.getProjectCache(project.getId());
         }
-        catch (Exception e){
-            e.printStackTrace();
+        catch (IllegalStateException e){
+            // в случае ошибки взаимодействия с кешем (кеш равен null) все равно отправляем ответ
+            return answer;
+        }
+
+        // если кеш не пустой, конструируем файловый api при помощи java parser, тем самым точечно обновляя его
+        if (!projectCache.isEmpty()){
+            try {
+                CacheSuggestionInnerProjectFile fileAPI = generateAPIforInnerFile(request.getContent());
+                projectCache.updateFileCache(file.getId(), fileAPI, time);
+
+            }
+            // файл может быть написан с ошибками, что вызовет ошибку при парсинге
+            catch (Exception e){
+                return answer;
+            }
+
         }
 
 
 
+        return answer;
 
 
 
-        return editorFileSaveAnswer;
     }
 
 
-    public EditorFileReadAnswer loadFile(EditorFileReadRequest request){
+    /*
+    Загрузка содержимого файла
+    Данный метод опирается на username, projectname и fullpath к файлу,
+     так как операция чтения по желанию пользователя может быть доступна всем
+     */
 
-        // get props
+    public EditorFileReadAnswer readFile(EditorFileReadRequest request){
+
+        // для удобства извлекаем данные, которыми будем оперировать
         String username = request.getUsername();
         String projectname = request.getProjectname();
         String fullPath = request.getFullPath();
 
 
-        Project project = projectRepository.findByOwnerUsernameAndName(username, projectname)
-                .orElseThrow(()-> new IllegalArgumentException("no project found")
+        EditorFileReadAnswer editorFileReadAnswer = new EditorFileReadAnswer();
+
+        // загружаем проект (вся структура одним запросом), проверяя его наличие в базе данных
+        Project project = projectRepository.findByOwnerUsernameAndNameWithStructure(username, projectname)
+                .orElseThrow(()-> new IllegalArgumentException("project not found")
                 );
 
-        EditorFileReadAnswer editorFileReadAnswer = new EditorFileReadAnswer();
-        editorFileReadAnswer.setProject_id(project.getId());
-
         /*
-        извлекаем file_id, заодно проверяя целостность файловой системы
-
+        суть дальнейшего алгоритма - мы сравниваем полученный путь со структурой проекта в базе данных (начиная с root)
+        Наша цель - добраться до сущности file
          */
 
+
+
+
+        // превращаем путь в массив для его дальнейшей валидации
         String[] path = fullPath.split("/");
 
-
-
+        // переменная directory для прохода вглубь структуры проекта - начинаем с root папки
         Directory directory = project.getRoot();
 
+        // готовим переменную file для искомой сущности
         File file = null;
 
+        // итерируемся по элементам полученного пути к файлу
         for (int x = 0; x<path.length; x++){
             String step = path[x];
-            // сравниваем файлы
+            // если мы достигли последнего элемента - это имя файла, запрашиваем список файлов
             if (x== path.length-1){
                 List<File> files = directory.getFiles();
                 file = files.stream().filter(el->(el.getName()+"."+el.getExtension())
                                 .equals(step))
                         .findAny()
                         .orElseThrow(()->
-                                new IllegalArgumentException("no file found")
+                                new IllegalArgumentException("no file with name "+step)
                         );
 
 
 
             }
-
+            // если элемент не является последним, мы проверяем все директории
             else {
                 List<Directory> children = directory.getChildren();
                 String parent = directory.getName();
-                //System.out.println("step "+step);
-                //System.out.println(children);
                 directory = children.stream().filter(el->el.getName().equals(step)).findAny().orElseThrow(()->
                         new IllegalArgumentException("on parent "+parent +" no directory with name "+step+ " inside "+children)
                 );
             }
         }
 
+        // проверка пути завершена - загружаем содержимое файла из диска
+        String disk_path = disk_directory+"/"+username+"/projects/"+projectname+"/"+fullPath;
+        String content;
+
+        try {
+            content = Files.readString(Path.of(disk_path), StandardCharsets.UTF_8);
+        }
+        catch (IOException ioException){
+            throw new RuntimeException("fiel read error");
+        }
+
+        // формируем ответ
         editorFileReadAnswer.setFile_id(file.getId());
-
-        // загружаем файл из диска
-        java.io.File disk_file = new java.io.File(disk_directory+"/"+username+"/projects/"+projectname+"/"+fullPath);
-        StringBuilder sb = new StringBuilder();
-
-        try (FileReader r = new FileReader(disk_file);
-             BufferedReader bufferedReader = new BufferedReader(r);
-        ){
-
-            String s;
-            while ((s = bufferedReader.readLine())!=null){
-                
-                sb.append(s+"\n");
-            }
-        }
-        catch (Exception e){
-            throw new IllegalArgumentException("error while reading disk");
-        }
-
-
-
-        editorFileReadAnswer.setContent(sb.toString());
+        editorFileReadAnswer.setProject_id(project.getId());
         editorFileReadAnswer.setUpdatedAt(Instant.now());
-
-
-
-
-
-
-
+        editorFileReadAnswer.setContent(content);
 
         return editorFileReadAnswer;
+
+
     }
+
+
+
+
+    // генерируем api для внутреннего файла проекта - public и default компоненты
+    private CacheSuggestionInnerProjectFile generateAPIforInnerFile(String code){
+        CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
+        CompilationUnit astTree = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
+
+        String packageDeclaration = (astTree.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
+                .getNameAsString();
+        file.setPackageWay(packageDeclaration);
+
+        astTree.getTypes().forEach(type->{
+
+            CacheSuggestionInnerProjectType cacheType = new CacheSuggestionInnerProjectType();
+            cacheType.setName(type.getNameAsString());
+            // определяем access modifier для типа
+            if (type.isPublic()){
+                file.setPublicType(cacheType);
+            }
+            else if (!type.isPrivate() && !type.isNestedType() && !type.isProtected()){
+                file.getDefaultTypes().add(cacheType);
+            }
+            // анализируем методы - разделяем статичные и нестатичные методы для удобства чтения кеша
+            type.getMethods().forEach(method->{
+                String name = method.getNameAsString();
+                if (method.isStatic()){
+                    if (method.isPublic()){
+                        cacheType.getPublicStaticMethods().add(name);
+                    }
+                    else if (method.isDefault()){
+                        cacheType.getDefaultStaticMethods().add(name);
+                    }
+                }
+                else {
+                    if (method.isPublic()){
+                        cacheType.getPublicMethods().add(name);
+                    }
+                    else if (method.isDefault()){
+                        cacheType.getDefaultMethods().add(name);
+                    }
+                }
+
+            });
+
+            // анализируем поля - разделяем статичные и нестатичные поля для удобства чтения кеша
+            type.getFields().forEach(fieldDeclaration -> {
+
+                String fieldName = fieldDeclaration.findAll(VariableDeclarator.class).getFirst().getNameAsString();
+
+                if (fieldDeclaration.isStatic()){
+                    if (fieldDeclaration.isPublic()){
+                        cacheType.getPublicStaticFields().add(fieldName);
+
+                    }
+                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
+                        cacheType.getDefaultStaticFields().add(fieldName);
+                    }
+                }
+                else {
+                    if (fieldDeclaration.isPublic()){
+                        cacheType.getPublicFields().add(fieldName);
+
+                    }
+                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
+                        cacheType.getDefaultFields().add(fieldName);
+                    }
+                }
+
+
+            });
+
+
+
+        });
+
+
+        return file;
+    }
+
+
+
+
+
+
 }

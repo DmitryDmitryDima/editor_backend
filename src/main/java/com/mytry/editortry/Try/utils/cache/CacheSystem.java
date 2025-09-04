@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 // система напрямую связана с websocket
@@ -18,11 +19,26 @@ public class CacheSystem {
     private JavaStandartLibraryCache standartLibraryCache;
 
     // пара project_id : project cache
-    private final Map<Long, ProjectCache> projectsCaches = new HashMap<>();
+    private final Map<Long, ProjectCache> projectsCaches = new ConcurrentHashMap<>();
 
 
     // пара sessionId - id проекта
-    private final Map<String, Long> subscribersProjectsAssociation = new HashMap<>();
+    private final Map<String, Long> subscribersProjectsAssociation = new ConcurrentHashMap<>();
+
+
+    // если кеш отсутствует, то имеет место баг, т.к. метод вызывается активным подписчиком
+    public ProjectCache getProjectCache(Long id){
+
+        ProjectCache cache = projectsCaches.get(id);
+
+        if (cache == null) {
+            throw new IllegalStateException("Кеш проекта не был создан подписчиком");
+        }
+
+
+        return cache;
+
+    }
 
 
 

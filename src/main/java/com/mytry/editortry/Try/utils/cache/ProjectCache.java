@@ -2,28 +2,40 @@ package com.mytry.editortry.Try.utils.cache;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-
+/*
+    потенциальная логика чистильщика кешей
+    - если нет подписчиков - удаление
+    - если есть подписчики, но последнее обновление больше некоторого времени назад - удаление
+*/
 public class ProjectCache {
 
+    // lock для безопасных операций в многопоточной среде. Также используем стратегию defencive copy
+    private final ReentrantReadWriteLock globalLock = new ReentrantReadWriteLock();
 
-    // специальный обработчик будет чистить устаревший кеш, если таковой имеется
-    private Instant lastModified = Instant.now();
+    private final Lock readLock = globalLock.readLock();
+    private final Lock writeLock = globalLock.writeLock();
+
+
+    // фиксируем время последнего взаимодействия с кешем проекта
+    // специальный обработчик будет искать зависшие кеши, существующие больше определенного времени, и чистить их
+    private final AtomicReference<Instant> lastModified = new AtomicReference<>(Instant.now());
 
 
 
-    // список подписчиков - если 0. кеш проекта стирается
-    private final Set<String> subscribers = new HashSet<>();
+    // список сессий, подписанных на проект. Если ноль, кеш автоматически стирается
+    private final Set<String> subscribers = ConcurrentHashMap.newKeySet();
 
     /*
     ассоциации для доступа к внутреннему файловому кешу
-
      */
 
     // ассоциация - пакет = файлы
     private Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation;
-
-
 
     // ассоциация - айди файла = файл
     private Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation;
@@ -32,78 +44,148 @@ public class ProjectCache {
 
 
 
-    // фиксируем последнее изменение в проекте
-    public synchronized void notifyUpdate(){
-        lastModified = Instant.now();
+
+
+    // фиксируем последнее изменение в проекте после определенных операций
+    public void notifyUpdate(){
+        lastModified.set(Instant.now());
     }
+
+
 
     // чистим неактуальный кеш
-    public synchronized void clearExpiredCache(){
-        idToFileAssociation = null;
-        packageToFileAssociation = null;
+    public void clearExpiredCache(){
+
+        writeLock.lock();
+        try {
+            idToFileAssociation.clear();
+            packageToFileAssociation.clear();
+        }
+        finally {
+            writeLock.unlock();
+        }
     }
 
-    // вспомогательный метод, вызывая который, мы решаем, проводить ли анализ кодовой базы проекта
-    public synchronized boolean isEmpty(){
-        return packageToFileAssociation == null && idToFileAssociation == null;
+    // Проверка кеша на контент - если кеш пустой, то необходимо провести анализ проекта
+    public boolean isEmpty(){
+
+        readLock.lock();
+        try {
+            return packageToFileAssociation.isEmpty() && idToFileAssociation.isEmpty();
+        }
+        finally {
+            readLock.unlock();
+        }
     }
-
-
-
-    /*
-    потенциальная логика чистильщика кешей
-    - если нет подписчиков - удаление
-    - если есть подписчики, но последнее обновление больше некоторого времени назад - удаление
-     */
-
     // вспомогательный метод для статистики, обработчика неактуальных кешей
-    public synchronized Instant getLastUpdate() {
-        return lastModified;
+    public Instant getLastUpdate() {
+        return lastModified.get();
     }
 
     // вспомогательный метод для статистики / обработчика зависших кешей
-    public synchronized int getSubAmount(){
+    public int getSubAmount(){
         return subscribers.size();
     }
 
 
+
+
+
+
+    // добавляем подписчика
+    public void addSubscriber(String sessionId){
+        subscribers.add(sessionId);
+    }
+
     // удаляем подписчика и возвращаем текущее число подписчиков
-    public synchronized int removeSubscriber(String sessionId){
+    public int removeSubscriber(String sessionId){
         subscribers.remove(sessionId);
         return subscribers.size();
     }
 
-    // добавляем подписчика
-    public synchronized void addSubscriber(String sessionId){
-        subscribers.add(sessionId);
-    }
+
 
 
 
 
     // геттеры и сеттеры для работы с кешированной структурой проекта
 
-    public synchronized Map<Long, CacheSuggestionInnerProjectFile> getIdToFileAssociation() {
-        return idToFileAssociation;
+    public Map<Long, CacheSuggestionInnerProjectFile> getIdToFileAssociation() {
+        readLock.lock();
+        try {
+            return new HashMap<>(idToFileAssociation);
+        }
+        finally {
+            readLock.unlock();
+        }
     }
 
-    public synchronized void setIdToFileAssociation(Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation) {
-        this.idToFileAssociation = idToFileAssociation;
+    public void setIdToFileAssociation(Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation) {
+        writeLock.lock();
+        try {
+            this.idToFileAssociation = new HashMap<>(idToFileAssociation);
+        }
+        finally {
+            writeLock.unlock();
+        }
+
     }
 
-    public synchronized Map<String, List<CacheSuggestionInnerProjectFile>> getPackageToFileAssociation() {
-        return packageToFileAssociation;
+    public  Map<String, List<CacheSuggestionInnerProjectFile>> getPackageToFileAssociation() {
+        readLock.lock();
+        try {
+            return new HashMap<>(packageToFileAssociation);
+        }
+        finally {
+            readLock.unlock();
+        }
+
+
     }
 
-    public synchronized void setPackageToFileAssociation(Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation) {
-        this.packageToFileAssociation = packageToFileAssociation;
+    public void setPackageToFileAssociation(Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation) {
+        writeLock.lock();
+        try {
+            this.packageToFileAssociation = new HashMap<>(packageToFileAssociation);
+        }
+        finally {
+            writeLock.unlock();
+        }
+
+
     }
 
     // логика точечного обновления файлового кеша с сохранением объекта
-    public synchronized void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo){
-        CacheSuggestionInnerProjectFile fileCache = idToFileAssociation.get(fileId);
-        if (fileCache!=null){
-            fileCache.updateTypeStructureFrom(typeInfo);
+    public void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo){
+        writeLock.lock();
+        try {
+            CacheSuggestionInnerProjectFile fileCache = idToFileAssociation.get(fileId);
+            if (fileCache!=null){
+                fileCache.updateTypeStructureFrom(typeInfo);
+            }
+
         }
+        finally {
+            notifyUpdate();
+            writeLock.unlock();
+        }
+
+    }
+
+    // логика точечного обновления файлового кеша с сохранением объекта
+    public void updateFileCache(Long fileId, CacheSuggestionInnerProjectFile typeInfo, Instant time){
+        writeLock.lock();
+        try {
+            CacheSuggestionInnerProjectFile fileCache = idToFileAssociation.get(fileId);
+            if (fileCache!=null){
+                fileCache.updateTypeStructureFrom(typeInfo);
+            }
+
+        }
+        finally {
+            lastModified.set(time);
+            writeLock.unlock();
+        }
+
     }
 }

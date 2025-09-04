@@ -170,8 +170,8 @@ public class CodeAnalyzer {
                             // todo если package совпадает, мы должны смотреть не только публичные методы
                             if (f.getPublicType().getName().equals(rootType)){
 
-                                dotSuggestionAnswer.setMethods(f.getPublicType().getMethods());
-                                dotSuggestionAnswer.setFields(f.getPublicType().getFields());
+                                dotSuggestionAnswer.setMethods(f.getPublicType().getPublicMethods());
+                                dotSuggestionAnswer.setFields(f.getPublicType().getPublicFields());
                             }
                         }
 
@@ -215,7 +215,7 @@ public class CodeAnalyzer {
                 file.setPublicType(cacheSuggestionType);
                 el.getMethods().forEach(m->{
                     if (m.isPublic()){
-                        cacheSuggestionType.getMethods().add(m.getNameAsString());
+                        cacheSuggestionType.getPublicMethods().add(m.getNameAsString());
                     }
                 });
             }

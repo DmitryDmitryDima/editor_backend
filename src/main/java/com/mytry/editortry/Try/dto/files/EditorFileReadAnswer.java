@@ -20,7 +20,7 @@ public class EditorFileReadAnswer {
     private Long project_id;
 
 
-
+    // фиксируем время запроса дял контроля актуальности на стороне фронтенда
     private Instant updatedAt;
 
 

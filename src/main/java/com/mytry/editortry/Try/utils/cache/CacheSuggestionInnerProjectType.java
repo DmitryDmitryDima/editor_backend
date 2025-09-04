@@ -13,10 +13,18 @@ import java.util.List;
 public class CacheSuggestionInnerProjectType {
 
     private String name;
-    // используются для dot парсинга
-    private List<String> methods = new ArrayList<>();
-    // используются для dot парсинга
-    private List<String> fields = new ArrayList<>();
+    // нестатические поля
+    private List<String> publicMethods = new ArrayList<>();
+    private List<String> defaultMethods = new ArrayList<>();
+    private List<String> publicFields = new ArrayList<>();
+    private List<String> defaultFields = new ArrayList<>();
+
+    // статические поля
+    private List<String> publicStaticMethods = new ArrayList<>();
+    private List<String> defaultStaticMethods = new ArrayList<>();
+    private List<String> publicStaticFields = new ArrayList<>();
+    private List<String> defaultStaticFields = new ArrayList<>();
+
     // вложенные классы - под вопросом
     private List<CacheSuggestionInnerProjectType> innerTypes = new ArrayList<>();
 

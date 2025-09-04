@@ -8,7 +8,7 @@ import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
-import com.mytry.editortry.Try.service.EditorService;
+import com.mytry.editortry.Try.service.EditorServiceOld;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EditorAPI {
 
     @Autowired
-    private EditorService editorService;
+    private EditorServiceOld editorServiceOld;
 
     // читаем файл
     @PostMapping(value = "/load")
@@ -30,7 +30,7 @@ public class EditorAPI {
             ){
 
 
-        return ResponseEntity.ok(editorService.loadFile(request));
+        return ResponseEntity.ok(editorServiceOld.loadFile(request));
 
     }
 
@@ -41,7 +41,7 @@ public class EditorAPI {
     public ResponseEntity<EditorFileSaveAnswer> save(@RequestBody EditorFileSaveRequest request){
 
         System.out.println(request.getClientTime());
-        return ResponseEntity.ok(editorService.saveFile(request));
+        return ResponseEntity.ok(editorServiceOld.saveFile(request));
     }
 
 
@@ -50,14 +50,14 @@ public class EditorAPI {
     @PostMapping("/completions/basic")
     public ResponseEntity<EditorBasicSuggestionAnswer> basicSuggestion(@RequestBody EditorBasicSuggestionRequest request){
 
-        return ResponseEntity.ok(editorService.basicSuggestion(request));
+        return ResponseEntity.ok(editorServiceOld.basicSuggestion(request));
 
     }
 
     // предложка для точки
     @PostMapping("/completions/dot")
     public ResponseEntity<EditorDotSuggestionAnswer> dotSuggestion(@RequestBody EditorDotSuggestionRequest request){
-        return ResponseEntity.ok(editorService.dotSuggestion(request));
+        return ResponseEntity.ok(editorServiceOld.dotSuggestion(request));
     }
 
 }

@@ -89,6 +89,10 @@ public class JavaStandartLibraryCache {
             }
         }
 
+        /*
+        если произошла ошибка или файл отсутствует, мы перезаписываем и сохраняем кеш
+         */
+
         String javaHome = System.getProperty("java.home");
         System.out.println(javaHome);
 
@@ -162,7 +166,7 @@ public class JavaStandartLibraryCache {
             throw new IllegalArgumentException("error while creating standart library cache");
         }
 
-        // serialize cache
+        // сериализуем кеш
         serializeCache();
     }
 
