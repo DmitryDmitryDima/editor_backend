@@ -2,8 +2,14 @@ package com.mytry.editortry.Try.service;
 
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.Range;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
+import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
+import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
+import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -17,6 +23,7 @@ import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
+import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
@@ -32,7 +39,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class EditorService {
@@ -68,6 +77,43 @@ public class EditorService {
     /*методы класса object*/
     private final List<String> objectMethods = List
             .of("wait", "getClass", "hashCode","toString","clone", "equals", "notify", "notifyAll");
+
+     /*ключевые слова, доступные в методе*/
+     private final List<String> availableKeywordsForMethodAndConstructor = List.of("while","enum", "record","this", "try", "throw", "if", "int",
+             "interface", "short", "super", "switch", "synchronized","do", "double", "final", "for", "float",
+             "long", "class", "char","var","boolean", "byte","new"
+     );
+
+
+
+    /*
+    формирование подсказки при вводе некоторого текстового фрагмента пользователем
+    в данном методе - точка формирования кеша в случае его отсутствия
+
+    todo так как тут по сути происходит постоянный анализ кода, о некоторых найденных ошибках пользователя можно уведомлять
+     */
+    public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
+
+        EditorBasicSuggestionAnswer answer = new EditorBasicSuggestionAnswer();
+
+        /*
+        Шаг 1 - Сбор контексто-ориентированной информации, учитывающей текущий код и позицию в нем
+         */
+        try {
+            BasicSuggestionContextBasedInfo context = contextBasedAnalysis(request);
+            answer.setContextBasedInfo(context);
+        }
+        catch (Exception e){
+            throw new RuntimeException("invalid code context");
+        }
+
+
+
+
+
+        return answer;
+
+    }
 
 
 
@@ -194,7 +240,7 @@ public class EditorService {
         EditorFileReadAnswer editorFileReadAnswer = new EditorFileReadAnswer();
 
         // загружаем проект (вся структура одним запросом), проверяя его наличие в базе данных
-        Project project = projectRepository.findByOwnerUsernameAndNameWithStructure(username, projectname)
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectname)
                 .orElseThrow(()-> new IllegalArgumentException("project not found")
                 );
 
@@ -311,24 +357,25 @@ public class EditorService {
             // анализируем поля - разделяем статичные и нестатичные поля для удобства чтения кеша
             type.getFields().forEach(fieldDeclaration -> {
 
-                String fieldName = fieldDeclaration.findAll(VariableDeclarator.class).getFirst().getNameAsString();
+
+                List<String> variables = fieldDeclaration.getVariables().stream().map(NodeWithSimpleName::getNameAsString).toList();
 
                 if (fieldDeclaration.isStatic()){
                     if (fieldDeclaration.isPublic()){
-                        cacheType.getPublicStaticFields().add(fieldName);
+                        cacheType.getPublicStaticFields().addAll(variables);
 
                     }
                     else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
-                        cacheType.getDefaultStaticFields().add(fieldName);
+                        cacheType.getDefaultStaticFields().addAll(variables);
                     }
                 }
                 else {
                     if (fieldDeclaration.isPublic()){
-                        cacheType.getPublicFields().add(fieldName);
+                        cacheType.getPublicFields().addAll(variables);
 
                     }
                     else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
-                        cacheType.getDefaultFields().add(fieldName);
+                        cacheType.getDefaultFields().addAll(variables);
                     }
                 }
 
@@ -342,6 +389,203 @@ public class EditorService {
 
         return file;
     }
+
+    // анализируем текущий контекст кода, предлагаем только то, что доступно по контексту и соответствует введенным символам
+    private BasicSuggestionContextBasedInfo contextBasedAnalysis(EditorBasicSuggestionRequest request) throws Exception{
+        BasicSuggestionContextBasedInfo info = new BasicSuggestionContextBasedInfo();
+        // Готовим строку к парсингу
+        String preparedCode = CodeAnalysisUtils
+                .prepareCode(request);
+        // формируем AST древо для анализа
+        CompilationUnit compilationResult = parser.parse(preparedCode).getResult()
+                .orElseThrow(()->new IllegalStateException("parsing error"));
+
+        // извлекаем информацию о package
+        String packageDeclaration = CodeAnalysisUtils
+                .extractPackage(compilationResult);
+
+        info.setPackageWay(packageDeclaration);
+
+        // анализируем присутствующие в коде типы, сразу заносим их названия в ответ, вычисляем тип, внутри которого находится юзер
+        Optional<TypeDeclaration<?>> typeChosenByUser = CodeAnalysisUtils
+                .collectAndCheckTypes(compilationResult, info, request);
+
+
+
+        // если пользователь находится вне типа - ему доступен только набор ключевых слов
+        // делаем пометку, чтобы дальнейшая сборка учитывала этот контекст
+        if (typeChosenByUser.isEmpty()){
+            info.setOutsideOfType(true);
+            info.setKeywords(CodeAnalysisUtils.availableKeywordsOutsideOfType
+                    .stream()
+                    .filter(el->el.startsWith(request.getText()))
+                    .toList());
+            return info;
+        }
+
+        /*
+        пользователь находится внутри типа
+        Тут имеем следующие сценарии - позиция в теле класса (поля), в теле метода, в теле конструктора
+        При работе с методом учитываем статический контекст
+
+         */
+
+        TypeDeclaration<?> type = typeChosenByUser.get();
+
+        // для начала собираем всю необходимую информацию о типе
+        List<String> staticMethods = new ArrayList<>();
+        List<String> staticFields = new ArrayList<>();
+        List<String> nonStaticFields = new ArrayList<>();
+        List<String> nonStaticMethods = new ArrayList<>(CodeAnalysisUtils.objectMethods.stream() // сразу добавляем методы Object
+                .filter(el -> el.startsWith(request.getText())).toList());
+
+        // анализируем поля класса, извлекаем названия переменных, отмечаем статичность
+        CodeAnalysisUtils.collectAndSplitFields(type, request.getText(), staticFields,nonStaticFields);
+
+
+        // todo тут остановился
+
+        // анализируем методы, при этом отмечаем его диапазон, смотрим, входит ли в него позиция юзера
+        Optional<MethodDeclaration> methodChosenByUser = type.getMethods().stream()
+                .peek(methodDeclaration -> {
+                    String methodName = methodDeclaration.getNameAsString();
+                    // фильтруем по введенным символам
+                    if (methodName.startsWith(request.getText())){
+                        if (methodDeclaration.isStatic()){
+                            staticMethods.add(methodName);
+                        }
+                        else {
+                            nonStaticMethods.add(methodName);
+                        }
+                    }
+                }).filter(methodDeclaration -> {
+                    Range r = methodDeclaration.getRange()
+                            .orElseThrow(()->new IllegalArgumentException("invalid method range"));
+                    return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
+                }).findFirst();
+
+        // юзер находится внутри метода
+        if (methodChosenByUser.isPresent()){
+            MethodDeclaration method = methodChosenByUser.get();
+
+            // добавляем доступные ключевые слова
+            info.setKeywords(availableKeywordsForMethodAndConstructor
+                    .stream().filter(el->el.startsWith(request.getText())).toList());
+
+            /*
+            добавляем методы и поля
+            если метод статичен, то доступен только static контекст
+             */
+            if (!method.isStatic()){
+                info.getMethods().addAll(nonStaticMethods);
+                info.getFields().addAll(nonStaticFields);
+            }
+
+            info.getMethods().addAll(staticMethods);
+            info.getFields().addAll(staticFields);
+            /*
+            // анализируем параметры метода, выбираем соответствующие введенному тексту
+            info.getLocalVariables()
+                    .addAll(method.getParameters().stream()
+                            .map(NodeWithSimpleName::getNameAsString).filter(nameAsString ->
+                                nameAsString.startsWith(request.getText())
+            ).toList());
+
+
+            // анализируем тело метода, ищем локальные переменные, объявленные до позиции юзера
+            method.getBody().ifPresent((body)->{
+                body.findAll(VariableDeclarator.class).forEach(variableDeclarator -> {
+                    if (variableDeclarator.getNameAsString().startsWith(request.getText())){
+                        Range r = variableDeclarator.getRange()
+                                .orElseThrow(() -> new IllegalArgumentException("invalid variable range"));
+                        if (r.end.line <= request.getLine()){
+                            info.getLocalVariables().add(variableDeclarator.getNameAsString());
+                        }
+
+                    }
+                });
+            });
+
+             */
+
+            // анализируем параметры и тело метода, вычленяем локальные переменные с учетом позиции юзера
+            info.getLocalVariables()
+                    .addAll(CodeAnalysisUtils.extractLocalVariablesAndParameters(method, request));
+
+
+            return info;
+
+
+
+
+        }
+
+        // юзер находится вне какого либо метода - поля или конструктор
+
+        // проверка на нахождение внутри конструктора
+        Optional<ConstructorDeclaration> constructorChosenByUser = type.getConstructors()
+                .stream().filter(constructorDeclaration -> {
+                    Range range = constructorDeclaration.getRange()
+                            .orElseThrow(()->new IllegalArgumentException("invalid constructor range"));
+                    return range.begin.line<= request.getLine()&&range.end.line>= request.getLine();
+                }).findFirst();
+
+        // пользователь внутри конструктора
+        if (constructorChosenByUser.isPresent()){
+            // добавляем доступные ключевые слова
+            info.setKeywords(availableKeywordsForMethodAndConstructor
+                    .stream().filter(el->el.startsWith(request.getText())).toList());
+
+            // добавляем как статичный, так и обычный контекст
+            info.getMethods().addAll(staticMethods);
+            info.getFields().addAll(staticFields);
+            info.getMethods().addAll(nonStaticMethods);
+            info.getFields().addAll(nonStaticFields);
+
+            // анализируем параметры и тело метода, вычленяем локальные переменные с учетом позиции юзера
+            info.getLocalVariables()
+                    .addAll(CodeAnalysisUtils.extractLocalVariablesAndParameters(constructorChosenByUser.get(), request));
+            return info;
+
+        }
+
+        // пользователь снаружи метода или конструктора
+        // добавляем как статичный, так и обычный контекст
+        info.getMethods().addAll(staticMethods);
+        info.getFields().addAll(staticFields);
+        info.getMethods().addAll(nonStaticMethods);
+        info.getFields().addAll(nonStaticFields);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        return info;
+    }
+
+
+
+
+
+
+
 
 
 

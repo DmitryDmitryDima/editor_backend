@@ -351,7 +351,7 @@ public class EditorServiceOld {
         String fullPath = request.getFullPath();
 
 
-        Project project = projectRepository.findByOwnerUsernameAndNameWithStructure(username, projectname)
+        Project project = projectRepository.findByOwnerUsernameAndName(username, projectname)
                 .orElseThrow(()-> new IllegalArgumentException("no project found")
                 );
 

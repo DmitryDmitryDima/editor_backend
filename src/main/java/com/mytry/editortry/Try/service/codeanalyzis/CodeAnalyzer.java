@@ -553,6 +553,7 @@ public class CodeAnalyzer {
                     }
 
 
+
                     info.getFields().addAll(staticFields);
                     info.getMethods().addAll(staticMethods);
 

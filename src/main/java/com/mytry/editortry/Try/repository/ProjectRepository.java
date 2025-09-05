@@ -13,5 +13,5 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
 
     Optional<Project> findByOwnerUsernameAndName(String username, String name);
-    Optional<Project> findByOwnerUsernameAndNameWithStructure(String username, String name);
+
 }

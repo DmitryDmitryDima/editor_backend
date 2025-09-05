@@ -35,10 +35,10 @@ public class ProjectCache {
      */
 
     // ассоциация - пакет = файлы
-    private Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation;
+    private Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation = new HashMap<>();
 
     // ассоциация - айди файла = файл
-    private Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation;
+    private Map<Long, CacheSuggestionInnerProjectFile> idToFileAssociation = new HashMap<>();
 
 
 

@@ -25,4 +25,6 @@ public class BasicSuggestionContextBasedInfo {
     private boolean outsideOfType;
 
 
+
+
 }
