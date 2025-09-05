@@ -443,33 +443,20 @@ public class EditorService {
         CodeAnalysisUtils.collectAndSplitFields(type, request.getText(), staticFields,nonStaticFields);
 
 
-        // todo тут остановился
+
 
         // анализируем методы, при этом отмечаем его диапазон, смотрим, входит ли в него позиция юзера
-        Optional<MethodDeclaration> methodChosenByUser = type.getMethods().stream()
-                .peek(methodDeclaration -> {
-                    String methodName = methodDeclaration.getNameAsString();
-                    // фильтруем по введенным символам
-                    if (methodName.startsWith(request.getText())){
-                        if (methodDeclaration.isStatic()){
-                            staticMethods.add(methodName);
-                        }
-                        else {
-                            nonStaticMethods.add(methodName);
-                        }
-                    }
-                }).filter(methodDeclaration -> {
-                    Range r = methodDeclaration.getRange()
-                            .orElseThrow(()->new IllegalArgumentException("invalid method range"));
-                    return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
-                }).findFirst();
+        Optional<MethodDeclaration> methodChosenByUser = CodeAnalysisUtils.collectAndCheckMethods(
+                type,request,staticMethods,nonStaticMethods
+        );
+
 
         // юзер находится внутри метода
         if (methodChosenByUser.isPresent()){
             MethodDeclaration method = methodChosenByUser.get();
 
             // добавляем доступные ключевые слова
-            info.setKeywords(availableKeywordsForMethodAndConstructor
+            info.setKeywords(CodeAnalysisUtils.availableKeywordsForMethodAndConstructor
                     .stream().filter(el->el.startsWith(request.getText())).toList());
 
             /*
@@ -483,30 +470,7 @@ public class EditorService {
 
             info.getMethods().addAll(staticMethods);
             info.getFields().addAll(staticFields);
-            /*
-            // анализируем параметры метода, выбираем соответствующие введенному тексту
-            info.getLocalVariables()
-                    .addAll(method.getParameters().stream()
-                            .map(NodeWithSimpleName::getNameAsString).filter(nameAsString ->
-                                nameAsString.startsWith(request.getText())
-            ).toList());
 
-
-            // анализируем тело метода, ищем локальные переменные, объявленные до позиции юзера
-            method.getBody().ifPresent((body)->{
-                body.findAll(VariableDeclarator.class).forEach(variableDeclarator -> {
-                    if (variableDeclarator.getNameAsString().startsWith(request.getText())){
-                        Range r = variableDeclarator.getRange()
-                                .orElseThrow(() -> new IllegalArgumentException("invalid variable range"));
-                        if (r.end.line <= request.getLine()){
-                            info.getLocalVariables().add(variableDeclarator.getNameAsString());
-                        }
-
-                    }
-                });
-            });
-
-             */
 
             // анализируем параметры и тело метода, вычленяем локальные переменные с учетом позиции юзера
             info.getLocalVariables()
@@ -515,25 +479,18 @@ public class EditorService {
 
             return info;
 
-
-
-
         }
 
-        // юзер находится вне какого либо метода - поля или конструктор
+        // юзер находится вне какого либо метода - он в теле класса или в конструкторе
 
         // проверка на нахождение внутри конструктора
-        Optional<ConstructorDeclaration> constructorChosenByUser = type.getConstructors()
-                .stream().filter(constructorDeclaration -> {
-                    Range range = constructorDeclaration.getRange()
-                            .orElseThrow(()->new IllegalArgumentException("invalid constructor range"));
-                    return range.begin.line<= request.getLine()&&range.end.line>= request.getLine();
-                }).findFirst();
+        Optional<ConstructorDeclaration> constructorChosenByUser = CodeAnalysisUtils
+                .collectAndCheckConstructors(type,request);
 
         // пользователь внутри конструктора
         if (constructorChosenByUser.isPresent()){
             // добавляем доступные ключевые слова
-            info.setKeywords(availableKeywordsForMethodAndConstructor
+            info.setKeywords(CodeAnalysisUtils.availableKeywordsForMethodAndConstructor
                     .stream().filter(el->el.startsWith(request.getText())).toList());
 
             // добавляем как статичный, так и обычный контекст
@@ -544,7 +501,8 @@ public class EditorService {
 
             // анализируем параметры и тело метода, вычленяем локальные переменные с учетом позиции юзера
             info.getLocalVariables()
-                    .addAll(CodeAnalysisUtils.extractLocalVariablesAndParameters(constructorChosenByUser.get(), request));
+                    .addAll(CodeAnalysisUtils
+                            .extractLocalVariablesAndParameters(constructorChosenByUser.get(), request));
             return info;
 
         }

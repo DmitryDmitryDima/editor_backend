@@ -3,9 +3,7 @@ package com.mytry.editortry.Try.utils.parser;
 
 import com.github.javaparser.Range;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.CallableDeclaration;
-import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
@@ -68,6 +66,41 @@ public class CodeAnalysisUtils {
         ).findFirst();
     }
 
+    // собираем конструкторы и вычисляем, внутри какого находится пользователь
+    public static Optional<ConstructorDeclaration> collectAndCheckConstructors(TypeDeclaration<?> type,
+                                                                               EditorBasicSuggestionRequest request){
+        return type.getConstructors()
+                .stream().filter(constructorDeclaration -> {
+                    Range range = constructorDeclaration.getRange()
+                            .orElseThrow(()->new IllegalArgumentException("invalid constructor range"));
+                    return range.begin.line<= request.getLine()&&range.end.line>= request.getLine();
+                }).findFirst();
+    }
+
+    // собираем методы и вычисляем, в каком находится юзер
+    public static Optional<MethodDeclaration> collectAndCheckMethods(TypeDeclaration<?> type,
+                                                                     EditorBasicSuggestionRequest request, List<String> staticMethods,
+                                                                     List<String> nonStaticMethods){
+
+        return type.getMethods().stream()
+                .peek(methodDeclaration -> {
+                    String methodName = methodDeclaration.getNameAsString();
+                    // фильтруем по введенным символам
+                    if (methodName.startsWith(request.getText())){
+                        if (methodDeclaration.isStatic()){
+                            staticMethods.add(methodName);
+                        }
+                        else {
+                            nonStaticMethods.add(methodName);
+                        }
+                    }
+                }).filter(methodDeclaration -> {
+                    Range r = methodDeclaration.getRange()
+                            .orElseThrow(()->new IllegalArgumentException("invalid method range"));
+                    return r.begin.line<= request.getLine()&&r.end.line>= request.getLine();
+                }).findFirst();
+    }
+
     // собираем и фильтруем поля класса, разделяя их на статичные и нестатичные
     public static void collectAndSplitFields(TypeDeclaration<?> type,
                                             String typedCode,
@@ -85,10 +118,9 @@ public class CodeAnalysisUtils {
                 nonStaticFields.addAll(variables);
             }
         });
-
-
-
     }
+
+
 
     // извлекаем локальные переменные из метода или конструктора
     public static List<String> extractLocalVariablesAndParameters(CallableDeclaration<?> callableDeclaration,
