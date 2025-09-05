@@ -148,7 +148,7 @@ public class EditorServiceOld {
          */
 
         // Проверяем, существует ли кеш
-        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem.getProjectCacheState(request.getProject_id());
+        Map<String, List<CacheSuggestionInnerProjectFile>> cache = cacheSystem. getProjectCacheState(request.getProject_id());
 
 
         // пересборка кеша

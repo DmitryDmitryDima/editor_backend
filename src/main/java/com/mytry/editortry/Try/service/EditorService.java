@@ -2,11 +2,8 @@ package com.mytry.editortry.Try.service;
 
 
 import com.github.javaparser.JavaParser;
-import com.github.javaparser.Range;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
-import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
@@ -20,7 +17,6 @@ import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
@@ -74,15 +70,7 @@ public class EditorService {
     @Autowired
     private JavaParser parser;
 
-    /*методы класса object*/
-    private final List<String> objectMethods = List
-            .of("wait", "getClass", "hashCode","toString","clone", "equals", "notify", "notifyAll");
 
-     /*ключевые слова, доступные в методе*/
-     private final List<String> availableKeywordsForMethodAndConstructor = List.of("while","enum", "record","this", "try", "throw", "if", "int",
-             "interface", "short", "super", "switch", "synchronized","do", "double", "final", "for", "float",
-             "long", "class", "char","var","boolean", "byte","new"
-     );
 
 
 
@@ -106,6 +94,20 @@ public class EditorService {
         catch (Exception e){
             throw new RuntimeException("invalid code context");
         }
+
+        /*
+        Шаг 2 - Формирование/получение внешнего кеша. После этого производим его анализ на соответствие контексту
+         */
+
+
+        ProjectCache projectCache = cacheSystem.getProjectCache(request.getProject_id());
+
+
+
+
+
+
+
 
 
 
@@ -203,7 +205,7 @@ public class EditorService {
         // если кеш не пустой, конструируем файловый api при помощи java parser, тем самым точечно обновляя его
         if (!projectCache.isEmpty()){
             try {
-                CacheSuggestionInnerProjectFile fileAPI = generateAPIforInnerFile(request.getContent());
+                CacheSuggestionInnerProjectFile fileAPI = generateInnerProjectFileAPI(request.getContent());
                 projectCache.updateFileCache(file.getId(), fileAPI, time);
 
             }
@@ -213,8 +215,6 @@ public class EditorService {
             }
 
         }
-
-
 
         return answer;
 
@@ -313,82 +313,15 @@ public class EditorService {
 
 
     // генерируем api для внутреннего файла проекта - public и default компоненты
-    private CacheSuggestionInnerProjectFile generateAPIforInnerFile(String code){
-        CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
-        CompilationUnit astTree = parser.parse(code).getResult().orElseThrow(()->new IllegalArgumentException("parsing failed"));
-
-        String packageDeclaration = (astTree.getPackageDeclaration().orElseThrow(()-> new IllegalArgumentException("no package")))
-                .getNameAsString();
-        file.setPackageWay(packageDeclaration);
-
-        astTree.getTypes().forEach(type->{
-
-            CacheSuggestionInnerProjectType cacheType = new CacheSuggestionInnerProjectType();
-            cacheType.setName(type.getNameAsString());
-            // определяем access modifier для типа
-            if (type.isPublic()){
-                file.setPublicType(cacheType);
-            }
-            else if (!type.isPrivate() && !type.isNestedType() && !type.isProtected()){
-                file.getDefaultTypes().add(cacheType);
-            }
-            // анализируем методы - разделяем статичные и нестатичные методы для удобства чтения кеша
-            type.getMethods().forEach(method->{
-                String name = method.getNameAsString();
-                if (method.isStatic()){
-                    if (method.isPublic()){
-                        cacheType.getPublicStaticMethods().add(name);
-                    }
-                    else if (method.isDefault()){
-                        cacheType.getDefaultStaticMethods().add(name);
-                    }
-                }
-                else {
-                    if (method.isPublic()){
-                        cacheType.getPublicMethods().add(name);
-                    }
-                    else if (method.isDefault()){
-                        cacheType.getDefaultMethods().add(name);
-                    }
-                }
-
-            });
-
-            // анализируем поля - разделяем статичные и нестатичные поля для удобства чтения кеша
-            type.getFields().forEach(fieldDeclaration -> {
-
-
-                List<String> variables = fieldDeclaration.getVariables().stream().map(NodeWithSimpleName::getNameAsString).toList();
-
-                if (fieldDeclaration.isStatic()){
-                    if (fieldDeclaration.isPublic()){
-                        cacheType.getPublicStaticFields().addAll(variables);
-
-                    }
-                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
-                        cacheType.getDefaultStaticFields().addAll(variables);
-                    }
-                }
-                else {
-                    if (fieldDeclaration.isPublic()){
-                        cacheType.getPublicFields().addAll(variables);
-
-                    }
-                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
-                        cacheType.getDefaultFields().addAll(variables);
-                    }
-                }
-
-
-            });
-
-
-
-        });
-
-
-        return file;
+    private CacheSuggestionInnerProjectFile generateInnerProjectFileAPI(String code){
+        CompilationUnit astTree = compile(code);
+        return CodeAnalysisUtils.generateInnerProjectFileAPI(astTree);
     }
+
+
+
+
+
 
     // анализируем текущий контекст кода, предлагаем только то, что доступно по контексту и соответствует введенным символам
     private BasicSuggestionContextBasedInfo contextBasedAnalysis(EditorBasicSuggestionRequest request) throws Exception{
@@ -397,8 +330,7 @@ public class EditorService {
         String preparedCode = CodeAnalysisUtils
                 .prepareCode(request);
         // формируем AST древо для анализа
-        CompilationUnit compilationResult = parser.parse(preparedCode).getResult()
-                .orElseThrow(()->new IllegalStateException("parsing error"));
+        CompilationUnit compilationResult = compile(preparedCode);
 
         // извлекаем информацию о package
         String packageDeclaration = CodeAnalysisUtils
@@ -536,6 +468,12 @@ public class EditorService {
 
 
         return info;
+    }
+
+    // создаем ast древо или выбрасываем ошибку
+    private CompilationUnit compile(String code){
+        return parser.parse(code).getResult()
+                .orElseThrow(()->new IllegalStateException("parsing error"));
     }
 
 

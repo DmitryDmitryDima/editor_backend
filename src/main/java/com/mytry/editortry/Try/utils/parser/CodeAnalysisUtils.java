@@ -8,6 +8,8 @@ import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,81 @@ public class CodeAnalysisUtils {
         return (astTree.getPackageDeclaration()
                 .orElseThrow(()-> new IllegalArgumentException("package detection error")))
                 .getNameAsString();
+    }
+
+    public static CacheSuggestionInnerProjectFile generateInnerProjectFileAPI(CompilationUnit astTree){
+        CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
+        String packageDeclaration = extractPackage(astTree);
+
+        file.setPackageWay(packageDeclaration);
+
+        astTree.getTypes().forEach(type->{
+
+            CacheSuggestionInnerProjectType cacheType = new CacheSuggestionInnerProjectType();
+            cacheType.setName(type.getNameAsString());
+            // определяем access modifier для типа
+            if (type.isPublic()){
+                file.setPublicType(cacheType);
+            }
+            else if (!type.isPrivate() && !type.isNestedType() && !type.isProtected()){
+                file.getDefaultTypes().add(cacheType);
+            }
+            // анализируем методы - разделяем статичные и нестатичные методы для удобства чтения кеша
+            type.getMethods().forEach(method->{
+                String name = method.getNameAsString();
+                if (method.isStatic()){
+                    if (method.isPublic()){
+                        cacheType.getPublicStaticMethods().add(name);
+                    }
+                    else if (method.isDefault()){
+                        cacheType.getDefaultStaticMethods().add(name);
+                    }
+                }
+                else {
+                    if (method.isPublic()){
+                        cacheType.getPublicMethods().add(name);
+                    }
+                    else if (method.isDefault()){
+                        cacheType.getDefaultMethods().add(name);
+                    }
+                }
+
+            });
+
+            // анализируем поля - разделяем статичные и нестатичные поля для удобства чтения кеша
+            type.getFields().forEach(fieldDeclaration -> {
+
+
+                List<String> variables = fieldDeclaration.getVariables().stream().map(NodeWithSimpleName::getNameAsString).toList();
+
+                if (fieldDeclaration.isStatic()){
+                    if (fieldDeclaration.isPublic()){
+                        cacheType.getPublicStaticFields().addAll(variables);
+
+                    }
+                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
+                        cacheType.getDefaultStaticFields().addAll(variables);
+                    }
+                }
+                else {
+                    if (fieldDeclaration.isPublic()){
+                        cacheType.getPublicFields().addAll(variables);
+
+                    }
+                    else if (!fieldDeclaration.isPrivate() && !fieldDeclaration.isProtected()){
+                        cacheType.getDefaultFields().addAll(variables);
+                    }
+                }
+
+
+            });
+
+
+
+        });
+
+
+        return file;
     }
 
     // собираем типы и вычисляем, внутри какого типа находится пользователь
