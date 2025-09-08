@@ -104,12 +104,12 @@ public class EditorServiceOld {
             // формируем путь, следуя классической maven структуре
             String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
 
-            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
-            cache = projectTypesDTO.getPackageToFileAssociation();
+            ProjectCacheDTO projectCacheDTO = codeAnalyzer.analyzeProject(current, path);
+            cache = projectCacheDTO.getPackageToFileAssociation();
             // обновляем кеш
             cacheSystem.updateProjectCache(request.getProject_id(),
-                    projectTypesDTO.getPackageToFileAssociation(),
-                    projectTypesDTO.getIdToFileAssociation() );
+                    projectCacheDTO.getPackageToFileAssociation(),
+                    projectCacheDTO.getIdToFileAssociation() );
         }
 
 
@@ -173,12 +173,12 @@ public class EditorServiceOld {
             // формируем путь, следуя классической maven структуре
             String path = disk_directory+ owner.getUsername()+"/projects/"+projectname+"/src/main/java";
 
-            ProjectTypesDTO projectTypesDTO = codeAnalyzer.analyzeProject(current, path);
-            cache = projectTypesDTO.getPackageToFileAssociation();
+            ProjectCacheDTO projectCacheDTO = codeAnalyzer.analyzeProject(current, path);
+            cache = projectCacheDTO.getPackageToFileAssociation();
             // обновляем кеш
             cacheSystem.updateProjectCache(request.getProject_id(),
-                    projectTypesDTO.getPackageToFileAssociation(),
-                    projectTypesDTO.getIdToFileAssociation() );
+                    projectCacheDTO.getPackageToFileAssociation(),
+                    projectCacheDTO.getIdToFileAssociation() );
         }
 
         // todo анализ кеша и формирование ответа

@@ -7,6 +7,7 @@ import com.github.javaparser.ast.body.*;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
+import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -29,6 +30,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +40,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -101,6 +105,38 @@ public class EditorService {
 
 
         ProjectCache projectCache = cacheSystem.getProjectCache(request.getProject_id());
+
+
+        ProjectCacheDTO projectCacheState = projectCache.getAWholeCache();
+
+
+        // если кеш пустой, мы должны его пересобрать
+        if (projectCacheState.getPackageToFileAssociation().isEmpty() && projectCacheState.getIdToFileAssociation().isEmpty()) {
+
+            // формируем путь к папке проекта на основании owner id и project id
+            Project project = projectRepository
+                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
+            String username = project.getOwner().getUsername();
+            String projectname = project.getName();
+
+            // получаем директорию com, проверяем, соответствует ли проект структуре maven
+            Directory currentDirectory = project.getRoot();
+            for (String structureFolderName:CodeAnalysisUtils.mavenFolderStructure){
+                Optional<Directory> candidate = currentDirectory
+                        .getChildren().stream().filter(directory->directory.getName().equals(structureFolderName)).findAny();
+                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
+                currentDirectory = candidate.get();
+
+            }
+
+            // путь к корневой папке проекта пользователя
+            String javaPath = disk_directory+ username+"/projects/"+projectname+"/src/main/java";
+            ProjectCacheDTO constructedCache = analyzeProject(currentDirectory, javaPath);
+            projectCache.updateProjectCache(constructedCache);
+            projectCacheState = constructedCache;
+        }
+
+        // работаем со слепком кеша
 
 
 
@@ -305,6 +341,123 @@ public class EditorService {
         editorFileReadAnswer.setContent(content);
 
         return editorFileReadAnswer;
+
+
+    }
+
+
+
+
+    // анализируем проект, рекурсивно исследуя его структуру
+    public ProjectCacheDTO analyzeProject(Directory root, String rootPath){
+
+
+
+        ProjectCacheDTO projectCacheDTO = new ProjectCacheDTO();
+        try {
+
+            // массив для динамической фиксации пути в зависимости от позиции в дереве (внутри рекурсии)
+            ArrayList<String> layer = new ArrayList<>();
+            layer.add(rootPath);
+
+
+
+            collectAndAnalyzeFiles(layer, root, projectCacheDTO);
+
+        }
+        catch (Exception e){
+            throw new RuntimeException("fail to construct project cache");
+        }
+
+        return projectCacheDTO;
+    }
+
+    /*
+    вспомогательный метод для рекурсии - исследование директории и заполнение кеша
+    root path + layer + filename = > полный путь
+     */
+
+    private void collectAndAnalyzeFiles(ArrayList<String> layer,
+                                        Directory directory,
+                                        ProjectCacheDTO dto) throws Exception{
+
+        // формируем состояние пути в соответствии с позицией
+        layer.add(directory.getName());
+
+        // базовый путь для каждого из файлов
+        // для каждого файла формируем строку пути
+        StringBuilder filePath = new StringBuilder();
+
+        for (String folderName:layer){
+            filePath.append(folderName);
+            filePath.append("/");
+        }
+
+        // начинаем с файлов - нас интересует java
+        for (File fileEntity:directory.getFiles()){
+            if (fileEntity.getExtension().equals("java")){
+
+
+
+
+                // читаем файл
+                java.io.File openedFile = new java.io.File(filePath
+                        +fileEntity.getName()
+                        +"."
+                        +fileEntity.getExtension());
+
+                StringBuilder fileContent = new StringBuilder();
+
+                try (FileReader fileReader = new FileReader(openedFile);
+                     BufferedReader bufferedReader = new BufferedReader(fileReader);
+                ){
+
+                    String line;
+                    while ((line = bufferedReader.readLine())!=null){
+
+                        fileContent.append(line).append("\n");
+                    }
+                }
+                catch (Exception e){
+                    throw new IllegalArgumentException("error while reading disk");
+                }
+
+                // формируем api файла для кеша
+                CacheSuggestionInnerProjectFile suggestion = generateInnerProjectFileAPI(fileContent.toString());
+
+                // вносим полученный api в кеш ассоциации
+
+                // id to file ассоциация
+                dto.getIdToFileAssociation().put(fileEntity.getId(), suggestion);
+
+                // package ассоциация - проверяем. затрагивался ли ранее package, если нет - создаем новый список
+                Map<String, List<CacheSuggestionInnerProjectFile>> packages = dto.getPackageToFileAssociation();
+                var packageList = packages.get(suggestion.getPackageWay());
+                if (packageList == null){
+                    ArrayList<CacheSuggestionInnerProjectFile> list = new ArrayList<>();
+                    list.add(suggestion);
+                    packages.put(suggestion.getPackageWay(), list);
+                }
+                else {
+                    packageList.add(suggestion);
+                }
+
+
+
+
+
+            }
+
+        }
+        for (Directory ch:directory.getChildren()){
+            collectAndAnalyzeFiles(layer, ch, dto);
+        }
+
+        // удаляем пройденную директорию из пути
+        layer.remove(layer.size()-1);
+
+
+
 
 
     }

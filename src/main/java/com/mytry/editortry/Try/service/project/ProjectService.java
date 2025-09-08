@@ -192,8 +192,16 @@ public class ProjectService {
                     <groupId>com.example</groupId>
                     <artifactId>%s</artifactId>
                     <version>1.0-SNAPSHOT</version>
+                    <build>
+                        <plugins>
+                          <plugin>
+                            <groupId>org.apache.maven.plugins</groupId>
+                            <artifactId>maven-compiler-plugin</artifactId>
+                          </plugin>
+                        </plugins>
+                        </build>
                 </project>
-                """.formatted(root.getName()+" project");
+                """.formatted(root.getName()+"-project");
 
 
 

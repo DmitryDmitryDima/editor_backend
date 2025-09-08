@@ -13,7 +13,7 @@ import java.util.Map;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProjectTypesDTO {
+public class ProjectCacheDTO {
 
     // ассоциация - пакет = файлы
     private Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation = new HashMap<>();

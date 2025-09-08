@@ -41,7 +41,7 @@ public class CacheSystem {
     }
 
 
-
+    // утилитарный метод ля поиска типа по фрагменту имени
     public List<CacheSuggestionOuterProjectType> getStandartLibraryTypesByFragment(String fragment){
         return standartLibraryCache.getTypesByFragment(fragment);
     }

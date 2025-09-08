@@ -39,6 +39,10 @@ public class CodeAnalysisUtils {
             "public","abstract","sealed","final","class","non-sealed");
 
 
+    public final static List<String> mavenFolderStructure = List.of("src", "main","java","com");
+
+
+
 
 
 

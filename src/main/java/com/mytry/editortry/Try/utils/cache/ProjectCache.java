@@ -1,5 +1,7 @@
 package com.mytry.editortry.Try.utils.cache;
 
+import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
+
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -104,6 +106,21 @@ public class ProjectCache {
     }
 
 
+    // получение всего кеша целиком
+    public ProjectCacheDTO getAWholeCache(){
+        readLock.lock();
+        try {
+            ProjectCacheDTO dto = new ProjectCacheDTO();
+            dto.setIdToFileAssociation(new HashMap<>(idToFileAssociation));
+            dto.setPackageToFileAssociation(new HashMap<>(packageToFileAssociation));
+            return dto;
+        }
+        finally {
+            readLock.unlock();
+        }
+    }
+
+
 
 
 
@@ -187,5 +204,17 @@ public class ProjectCache {
             writeLock.unlock();
         }
 
+    }
+
+    // логика заполнения всего кеша проекта
+    public void updateProjectCache(ProjectCacheDTO projectCacheDTO){
+        writeLock.lock();
+        try {
+            this.packageToFileAssociation = new HashMap<>(projectCacheDTO.getPackageToFileAssociation());
+            this.idToFileAssociation = new HashMap<>(projectCacheDTO.getIdToFileAssociation());
+        }
+        finally {
+            writeLock.unlock();
+        }
     }
 }

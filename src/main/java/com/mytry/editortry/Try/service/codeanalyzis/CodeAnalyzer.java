@@ -22,7 +22,7 @@ import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
 
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
-import com.mytry.editortry.Try.dto.basicsuggestion.ProjectTypesDTO;
+import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.model.Directory;
@@ -269,7 +269,7 @@ public class CodeAnalyzer {
     // root path + layer + filename = > full way
     private void collectAndAnalyzeFiles(ArrayList<String> layer,
                                         Directory directory,
-                                        ProjectTypesDTO dto) throws Exception{
+                                        ProjectCacheDTO dto) throws Exception{
 
         layer.add(directory.getName());
 
@@ -344,11 +344,11 @@ public class CodeAnalyzer {
     }
 
     // анализируем проект, собираем кеш
-    public ProjectTypesDTO analyzeProject(Directory root, String rootPath){
+    public ProjectCacheDTO analyzeProject(Directory root, String rootPath){
 
         System.out.println(root);
 
-        ProjectTypesDTO projectTypesDTO = new ProjectTypesDTO();
+        ProjectCacheDTO projectCacheDTO = new ProjectCacheDTO();
         try {
 
             ArrayList<String> layer = new ArrayList<>();
@@ -356,14 +356,14 @@ public class CodeAnalyzer {
 
 
 
-            collectAndAnalyzeFiles(layer, root, projectTypesDTO);
+            collectAndAnalyzeFiles(layer, root, projectCacheDTO);
 
         }
         catch (Exception e){
             e.printStackTrace();
         }
 
-        return projectTypesDTO;
+        return projectCacheDTO;
     }
 
 
