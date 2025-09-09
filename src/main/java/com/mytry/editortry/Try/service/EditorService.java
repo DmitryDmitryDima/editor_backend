@@ -4,10 +4,14 @@ package com.mytry.editortry.Try.service;
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.*;
+import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
 import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
 import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
+import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
@@ -18,6 +22,7 @@ import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectType;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
@@ -78,9 +83,143 @@ public class EditorService {
 
 
 
+    // метод, где пересобирается (создается) кеш для всего проекта
+    private ProjectCacheDTO prepareCache(Long projectId, ProjectCache projectCache){
+        // формируем путь к папке проекта на основании owner id и project id
+        Project project = projectRepository
+                .findById(projectId).orElseThrow(()-> new IllegalArgumentException("project not found"));
+        String username = project.getOwner().getUsername();
+        String projectname = project.getName();
+
+        // получаем директорию com, проверяем, соответствует ли проект структуре maven
+        Directory currentDirectory = project.getRoot();
+        for (String structureFolderName:CodeAnalysisUtils.mavenFolderStructure){
+            Optional<Directory> candidate = currentDirectory
+                    .getChildren().stream().filter(directory->directory.getName().equals(structureFolderName)).findAny();
+            if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
+            currentDirectory = candidate.get();
+
+        }
+
+        // путь к корневой папке проекта пользователя
+        String javaPath = disk_directory+ username+"/projects/"+projectname+"/src/main/java";
+        ProjectCacheDTO constructedCache = analyzeProject(currentDirectory, javaPath);
+        projectCache.updateProjectCache(constructedCache);
+        return constructedCache;
+    }
+
+
     /*
-    формирование подсказки при вводе некоторого текстового фрагмента пользователем
-    в данном методе - точка формирования кеша в случае его отсутствия
+     - формирование подсказки при вводе точки, к примеру после переменной
+     - в этом методе - одна из точек формирования кеша (в случае его отсутствия)
+     */
+
+    public EditorDotSuggestionAnswer dotSuggestion(EditorDotSuggestionRequest request){
+        EditorDotSuggestionAnswer answer = new EditorDotSuggestionAnswer();
+
+
+        // редактируем код так, чтобы он был приятен парсеру
+        String preparedCode = CodeAnalysisUtils.prepareCode(request);
+
+        // Получаем ast древо
+        CompilationUnit compilationResult = compile(preparedCode);
+
+        // получаем список импортов из ast дерева
+        List<String> imports = CodeAnalysisUtils.extractImports(compilationResult);
+
+        // вычисляем package для контроля доступности полей
+        String packageWay = CodeAnalysisUtils.extractPackage(compilationResult);
+
+        // вычисляем выражение, в котором находится пользователь
+        Optional<FieldAccessExpr> expressionCandidate = CodeAnalysisUtils.getExpression(compilationResult, request);
+
+        // выражение не найдено - возвращаем пустой ответ
+        if (expressionCandidate.isEmpty()){
+            return answer;
+        }
+
+        Expression expression = expressionCandidate.get().getScope();
+        // в начале пытаемся анализировать тип так, словно он находится (задан) внутри файла, или же доступен рефлексии
+        try {
+            CodeAnalysisUtils.analyzeExpressionAsInnerType(expression, answer);
+
+
+        }
+        catch (Exception e){
+            /*
+            проверяем наличие кеша
+            */
+            ProjectCache projectCache = cacheSystem.getProjectCache(request.getProject_id());
+
+
+            ProjectCacheDTO projectCacheState = projectCache.getAWholeCache();
+
+
+            // если кеш пустой, мы должны его пересобрать
+            if (projectCacheState.getPackageToFileAssociation().isEmpty() && projectCacheState.getIdToFileAssociation().isEmpty()) {
+
+                projectCacheState = prepareCache(request.getProject_id(), projectCache);
+            }
+
+            // пробуем соотнести информацию с импорта и тип
+            // todo в дальнейшем нужно будет разработать механизм обработки цепочки, а также вызова метода из статического класса
+
+            String rootType = null;
+            for (VariableDeclarator vr:compilationResult.findAll(VariableDeclarator.class)){
+                if (vr.getNameAsString().equals(expression.toString())){
+
+                    rootType = vr.getTypeAsString();
+                }
+            }
+
+            // одноименная переменная не найдена
+            if (rootType==null){
+                return answer;
+            }
+
+            String matchingImport = null;
+            for (String importStatement:imports){
+                if (importStatement.endsWith("."+rootType)){
+                    matchingImport = importStatement;
+                }
+            }
+            // соответствующий импорт отсутствует
+            if (matchingImport == null){
+                return answer;
+            }
+
+            // формируем package путь для найденного импорта
+            String way = matchingImport.substring(0, matchingImport.length()-rootType.length()-1);
+
+            List<CacheSuggestionInnerProjectFile> files = projectCacheState.getPackageToFileAssociation().get(way);
+
+            for (CacheSuggestionInnerProjectFile file:files){
+                if (file.getPublicType().getName().equals(rootType)){
+
+                    answer.setMethods(file.getPublicType().getPublicMethods());
+                    answer.setFields(file.getPublicType().getPublicFields());
+                }
+            }
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+        return answer;
+    }
+
+
+    /*
+     - формирование подсказки при вводе некоторого текстового фрагмента пользователем
+     - в данном методе - одна из точек формирования кеша (в случае его отсутствия)
 
     todo так как тут по сути происходит постоянный анализ кода, о некоторых найденных ошибках пользователя можно уведомлять
      */
@@ -91,8 +230,9 @@ public class EditorService {
         /*
         Шаг 1 - Сбор контексто-ориентированной информации, учитывающей текущий код и позицию в нем
          */
+        BasicSuggestionContextBasedInfo context;
         try {
-            BasicSuggestionContextBasedInfo context = contextBasedAnalysis(request);
+            context = contextBasedAnalysis(request);
             answer.setContextBasedInfo(context);
         }
         catch (Exception e){
@@ -113,41 +253,26 @@ public class EditorService {
         // если кеш пустой, мы должны его пересобрать
         if (projectCacheState.getPackageToFileAssociation().isEmpty() && projectCacheState.getIdToFileAssociation().isEmpty()) {
 
-            // формируем путь к папке проекта на основании owner id и project id
-            Project project = projectRepository
-                    .findById(request.getProject_id()).orElseThrow(()-> new IllegalArgumentException("project not found"));
-            String username = project.getOwner().getUsername();
-            String projectname = project.getName();
-
-            // получаем директорию com, проверяем, соответствует ли проект структуре maven
-            Directory currentDirectory = project.getRoot();
-            for (String structureFolderName:CodeAnalysisUtils.mavenFolderStructure){
-                Optional<Directory> candidate = currentDirectory
-                        .getChildren().stream().filter(directory->directory.getName().equals(structureFolderName)).findAny();
-                if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");
-                currentDirectory = candidate.get();
-
-            }
-
-            // путь к корневой папке проекта пользователя
-            String javaPath = disk_directory+ username+"/projects/"+projectname+"/src/main/java";
-            ProjectCacheDTO constructedCache = analyzeProject(currentDirectory, javaPath);
-            projectCache.updateProjectCache(constructedCache);
-            projectCacheState = constructedCache;
+            projectCacheState = prepareCache(request.getProject_id(), projectCache);
         }
 
-        // работаем со слепком кеша
+        // работаем со слепком кеша - извлекаем внутренние типы
 
+        answer.setProjectTypes(CodeAnalysisUtils.extractTypesFromInnerProjectCache(projectCacheState,
+                context.getPackageWay(), request.getText()));
 
+        // работаем с внешними библиотеками - пока что в рамках стандартной библиотеки java
+        // внешние типы запрашиваются только если пользователь находится внутри контекста типа
+        if (context.isOutsideOfType()){
+            return answer;
+        }
 
+        // извлекаем read-only java cache, после чего конвертируем его в формат серверного ответа
+        List<CacheSuggestionOuterProjectType> javaTypes = cacheSystem
+                .getStandartLibraryCache()
+                .getTypesByFragment(request.getText());
 
-
-
-
-
-
-
-
+        answer.setOuterTypes(CodeAnalysisUtils.convertCacheAnswerToBasicSuggestionType(javaTypes));
 
         return answer;
 
@@ -366,7 +491,7 @@ public class EditorService {
 
         }
         catch (Exception e){
-            throw new RuntimeException("fail to construct project cache");
+            throw new RuntimeException("fail to construct project cache "+e.getMessage());
         }
 
         return projectCacheDTO;

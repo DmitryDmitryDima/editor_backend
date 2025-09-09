@@ -19,8 +19,10 @@ public class EditorDotSuggestionRequest {
     private String expression;
 
     // номер строки
-    private int line;
+    private Integer line;
 
     private Long project_id;
     private Long file_id;
+
+    private Integer column;
 }

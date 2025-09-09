@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.service.project;
+package com.mytry.editortry.Try.service;
 
 
 import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
@@ -19,7 +19,6 @@ import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import org.apache.maven.model.v4.MavenStaxWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;

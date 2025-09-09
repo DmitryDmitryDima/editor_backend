@@ -4,7 +4,7 @@ package com.mytry.editortry.Try.api;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
 import com.mytry.editortry.Try.dto.users.UserDTO;
 import com.mytry.editortry.Try.model.User;
-import com.mytry.editortry.Try.service.project.ProjectService;
+import com.mytry.editortry.Try.service.ProjectService;
 import com.mytry.editortry.Try.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

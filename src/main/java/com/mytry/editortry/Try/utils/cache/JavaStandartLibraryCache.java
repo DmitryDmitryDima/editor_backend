@@ -1,6 +1,8 @@
 package com.mytry.editortry.Try.utils.cache;
 
-import com.mytry.editortry.Try.service.codeanalyzis.CodeAnalyzer;
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +28,9 @@ public class JavaStandartLibraryCache {
     @Value("${common.directory}")
     private String project_commons_path;
 
+    @Autowired
+    private JavaParser parser;
+
     private final String basicPath = "java.base/java/";
     private final List<String> zipStructurePaths = List.of(
             basicPath +"io",
@@ -40,12 +45,10 @@ public class JavaStandartLibraryCache {
 
     );
 
-    // todo сериализовать
+
     private HashMap<String, List<CacheSuggestionOuterProjectType>> cache = new HashMap<>();
 
-    // зависимость для формирования api
-    @Autowired
-    private CodeAnalyzer codeAnalyzer;
+
 
 
 
@@ -140,7 +143,8 @@ public class JavaStandartLibraryCache {
                 try(InputStream input = zip.getInputStream(f)) {
                     byte[] content = input.readAllBytes();
                     String code = new String(content, StandardCharsets.UTF_8);
-                    CacheSuggestionOuterProjectType typeApi = codeAnalyzer.generateJavaFileOuterApi(code);
+                    CompilationUnit compilationResult = parser.parse(code).getResult().orElseThrow();
+                    CacheSuggestionOuterProjectType typeApi = CodeAnalysisUtils.generateOuterFileApi(compilationResult);
                     if(typeApi.getName()!=null){
 
                         String firstLetter = typeApi.getName().substring(0,1);

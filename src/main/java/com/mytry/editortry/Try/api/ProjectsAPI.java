@@ -1,7 +1,7 @@
 package com.mytry.editortry.Try.api;
 
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
-import com.mytry.editortry.Try.service.project.ProjectService;
+import com.mytry.editortry.Try.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

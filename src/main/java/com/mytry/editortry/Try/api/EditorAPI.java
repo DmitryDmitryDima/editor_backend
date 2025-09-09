@@ -8,7 +8,7 @@ import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileReadRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveAnswer;
 import com.mytry.editortry.Try.dto.files.EditorFileSaveRequest;
-import com.mytry.editortry.Try.service.EditorServiceOld;
+import com.mytry.editortry.Try.service.EditorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/tools/editor")
 public class EditorAPI {
 
+
+
     @Autowired
-    private EditorServiceOld editorServiceOld;
+    private EditorService editorService;
 
     // читаем файл
     @PostMapping(value = "/load")
@@ -30,7 +32,7 @@ public class EditorAPI {
             ){
 
 
-        return ResponseEntity.ok(editorServiceOld.loadFile(request));
+        return ResponseEntity.ok(editorService.readFile(request));
 
     }
 
@@ -41,7 +43,7 @@ public class EditorAPI {
     public ResponseEntity<EditorFileSaveAnswer> save(@RequestBody EditorFileSaveRequest request){
 
         System.out.println(request.getClientTime());
-        return ResponseEntity.ok(editorServiceOld.saveFile(request));
+        return ResponseEntity.ok(editorService.saveFile(request));
     }
 
 
@@ -50,14 +52,14 @@ public class EditorAPI {
     @PostMapping("/completions/basic")
     public ResponseEntity<EditorBasicSuggestionAnswer> basicSuggestion(@RequestBody EditorBasicSuggestionRequest request){
 
-        return ResponseEntity.ok(editorServiceOld.basicSuggestion(request));
+        return ResponseEntity.ok(editorService.basicSuggestion(request));
 
     }
 
     // предложка для точки
     @PostMapping("/completions/dot")
     public ResponseEntity<EditorDotSuggestionAnswer> dotSuggestion(@RequestBody EditorDotSuggestionRequest request){
-        return ResponseEntity.ok(editorServiceOld.dotSuggestion(request));
+        return ResponseEntity.ok(editorService.dotSuggestion(request));
     }
 
 }

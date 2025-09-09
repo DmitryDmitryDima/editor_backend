@@ -46,6 +46,11 @@ public class CacheSystem {
         return standartLibraryCache.getTypesByFragment(fragment);
     }
 
+    // предоставляем доступ к кешированной библиотеке java
+    public JavaStandartLibraryCache getStandartLibraryCache(){
+        return standartLibraryCache;
+    }
+
 
     // мы фиксируем момент последнего изменения кеша для того, чтобы специальный обработчик чистил зависшие старые кеши
     public void setProjectChange(Long projectId){
