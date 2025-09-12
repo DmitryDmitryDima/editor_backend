@@ -21,6 +21,13 @@ import java.util.List;
 public class CacheSuggestionInnerProjectFile {
 
 
+    // кешируем путь до файла. Так как все операции,
+    // меняющие структуру проекта, стирают кеш, это поле всегда будет актуальным
+    private String filePath;
+
+    private boolean isParsed;
+
+
     // по сути копия строки package
     private String packageWay;
 
@@ -34,5 +41,8 @@ public class CacheSuggestionInnerProjectFile {
         publicType = cacheSuggestionInnerProjectFile.publicType;
         defaultTypes = cacheSuggestionInnerProjectFile.defaultTypes;
     }
+
+
+
 }
 

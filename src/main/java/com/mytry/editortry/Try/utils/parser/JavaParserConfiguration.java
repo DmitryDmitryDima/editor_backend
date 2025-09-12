@@ -17,7 +17,7 @@ public class JavaParserConfiguration {
 
 
     @Bean
-    // конфигурируем парсер (пока не ясно, можно ли сделать эо один раз)
+
     public ParserConfiguration prepareParserConfig(){
         // Конфигурация парсера
 

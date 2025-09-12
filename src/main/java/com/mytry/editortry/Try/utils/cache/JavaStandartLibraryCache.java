@@ -46,18 +46,18 @@ public class JavaStandartLibraryCache {
     );
 
 
-    private HashMap<String, List<CacheSuggestionOuterProjectType>> cache = new HashMap<>();
+    private HashMap<String, List<CacheSuggestionOuterProjectFile>> cache = new HashMap<>();
 
 
 
 
 
     // возвращаем список типов, соответствующих введенному пользователем фрагменту
-    public List<CacheSuggestionOuterProjectType> getTypesByFragment(String fragment){
+    public List<CacheSuggestionOuterProjectFile> getTypesByFragment(String fragment){
 
         String firstLetter = fragment.substring(0,1);
 
-        List<CacheSuggestionOuterProjectType> list=cache.get(firstLetter);
+        List<CacheSuggestionOuterProjectFile> list=cache.get(firstLetter);
 
         if (list == null){
             return List.of();
@@ -78,8 +78,8 @@ public class JavaStandartLibraryCache {
 
         if (Files.exists(Path.of(serPath))){
             try (ObjectInputStream in = new ObjectInputStream(new FileInputStream(serPath))) {
-                HashMap<String, List<CacheSuggestionOuterProjectType>> read =
-                        (HashMap<String, List<CacheSuggestionOuterProjectType>>) in.readObject();
+                HashMap<String, List<CacheSuggestionOuterProjectFile>> read =
+                        (HashMap<String, List<CacheSuggestionOuterProjectFile>>) in.readObject();
                 cache = read;
 
                 //System.out.println(read);
@@ -144,11 +144,11 @@ public class JavaStandartLibraryCache {
                     byte[] content = input.readAllBytes();
                     String code = new String(content, StandardCharsets.UTF_8);
                     CompilationUnit compilationResult = parser.parse(code).getResult().orElseThrow();
-                    CacheSuggestionOuterProjectType typeApi = CodeAnalysisUtils.generateOuterFileApi(compilationResult);
+                    CacheSuggestionOuterProjectFile typeApi = CodeAnalysisUtils.generateOuterFileApi(compilationResult);
                     if(typeApi.getName()!=null){
 
                         String firstLetter = typeApi.getName().substring(0,1);
-                        List<CacheSuggestionOuterProjectType> list = cache
+                        List<CacheSuggestionOuterProjectFile> list = cache
                                 .computeIfAbsent(firstLetter, (k)->new ArrayList<>());
                         list.add(typeApi);
 

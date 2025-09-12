@@ -33,6 +33,11 @@ public class Project {
     @JoinColumn(name = "root_id", referencedColumnName = "id")
     private Directory root; // на этой базе мы строим всю иерархию
 
+    // главный файл проекта
+    @OneToOne
+    @JoinColumn(name = "entry_point_id", referencedColumnName = "id")
+    private File entryPoint;
+
 
 
 

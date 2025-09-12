@@ -3,7 +3,6 @@ package com.mytry.editortry.Try.utils.cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,7 +41,7 @@ public class CacheSystem {
 
 
     // утилитарный метод ля поиска типа по фрагменту имени
-    public List<CacheSuggestionOuterProjectType> getStandartLibraryTypesByFragment(String fragment){
+    public List<CacheSuggestionOuterProjectFile> getStandartLibraryTypesByFragment(String fragment){
         return standartLibraryCache.getTypesByFragment(fragment);
     }
 

@@ -6,10 +6,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.FieldAccessExpr;
-import com.mytry.editortry.Try.dto.basicsuggestion.BasicSuggestionContextBasedInfo;
-import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionAnswer;
-import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
-import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
+import com.mytry.editortry.Try.dto.basicsuggestion.*;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.dto.files.EditorFileReadAnswer;
@@ -22,7 +19,7 @@ import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectType;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
@@ -193,12 +190,35 @@ public class EditorService {
 
             List<CacheSuggestionInnerProjectFile> files = projectCacheState.getPackageToFileAssociation().get(way);
 
+
+            // todo довольно уродливый кусок кода, позже переделать
             for (CacheSuggestionInnerProjectFile file:files){
-                if (file.getPublicType().getName().equals(rootType)){
+                // проверка на парсинг
+                if (file.isParsed() && file.getPublicType().getName().equals(rootType)){
 
                     answer.setMethods(file.getPublicType().getPublicMethods());
                     answer.setFields(file.getPublicType().getPublicFields());
                 }
+                // парсинг не проведен
+                else if (!file.isParsed()) {
+                    CacheSuggestionInnerProjectFile newAttempt =
+                            generateInnerProjectFileAPI(CodeAnalysisUtils.readFileFromDisk(file.getFilePath()),
+                                    file.getFilePath()) ;
+                    if (newAttempt.isParsed() && file.getPublicType().getName().equals(rootType)){
+                        // обновляем структуру
+                        file.updateTypeStructureFrom(newAttempt);
+                        file.setParsed(true);
+                        answer.setMethods(file.getPublicType().getPublicMethods());
+                        answer.setFields(file.getPublicType().getPublicFields());
+
+                    }
+                }
+
+
+
+
+
+
             }
 
 
@@ -220,8 +240,6 @@ public class EditorService {
     /*
      - формирование подсказки при вводе некоторого текстового фрагмента пользователем
      - в данном методе - одна из точек формирования кеша (в случае его отсутствия)
-
-    todo так как тут по сути происходит постоянный анализ кода, о некоторых найденных ошибках пользователя можно уведомлять
      */
     public EditorBasicSuggestionAnswer basicSuggestion(EditorBasicSuggestionRequest request){
 
@@ -258,8 +276,57 @@ public class EditorService {
 
         // работаем со слепком кеша - извлекаем внутренние типы
 
-        answer.setProjectTypes(CodeAnalysisUtils.extractTypesFromInnerProjectCache(projectCacheState,
-                context.getPackageWay(), request.getText()));
+
+
+        List<BasicSuggestionType> projectTypes = new ArrayList<>();
+        Map<String, List<CacheSuggestionInnerProjectFile>> packageToFileAssociation = projectCacheState.getPackageToFileAssociation();
+        for (Map.Entry<String, List<CacheSuggestionInnerProjectFile>> entry:packageToFileAssociation.entrySet()){
+
+            List<CacheSuggestionInnerProjectFile> files = entry.getValue();
+
+
+            for (var f:files){
+
+
+
+                if (f.isParsed() && f.getPublicType().getName().startsWith(request.getText())){
+                    BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
+                    // формируем импорт только в случае, если не совпадает package
+                    if (!context.getPackageWay().equals(f.getPackageWay())){
+                        basicSuggestionType.setPackageWay(f.getPackageWay());
+                    }
+
+                    basicSuggestionType.setName(f.getPublicType().getName());
+                    projectTypes.add(basicSuggestionType);
+                }
+
+                // пробуем пересобрать файл и снова извлечь тип
+                else if (!f.isParsed()){
+                    CacheSuggestionInnerProjectFile newAttempt =
+                            generateInnerProjectFileAPI(CodeAnalysisUtils.readFileFromDisk(f.getFilePath()),
+                                    f.getFilePath()) ;
+                    if (newAttempt.isParsed() && f.getPublicType().getName().startsWith(request.getText())){
+                        // обновляем структуру
+                        f.updateTypeStructureFrom(newAttempt);
+                        f.setParsed(true);
+                        BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
+                        // формируем импорт только в случае, если не совпадает package
+                        if (!context.getPackageWay().equals(f.getPackageWay())){
+                            basicSuggestionType.setPackageWay(f.getPackageWay());
+                        }
+
+                        basicSuggestionType.setName(f.getPublicType().getName());
+                        projectTypes.add(basicSuggestionType);
+                    }
+                }
+            }
+        }
+
+        answer.setProjectTypes(projectTypes);
+
+
+
+
 
         // работаем с внешними библиотеками - пока что в рамках стандартной библиотеки java
         // внешние типы запрашиваются только если пользователь находится внутри контекста типа
@@ -268,7 +335,7 @@ public class EditorService {
         }
 
         // извлекаем read-only java cache, после чего конвертируем его в формат серверного ответа
-        List<CacheSuggestionOuterProjectType> javaTypes = cacheSystem
+        List<CacheSuggestionOuterProjectFile> javaTypes = cacheSystem
                 .getStandartLibraryCache()
                 .getTypesByFragment(request.getText());
 
@@ -366,7 +433,7 @@ public class EditorService {
         // если кеш не пустой, конструируем файловый api при помощи java parser, тем самым точечно обновляя его
         if (!projectCache.isEmpty()){
             try {
-                CacheSuggestionInnerProjectFile fileAPI = generateInnerProjectFileAPI(request.getContent());
+                CacheSuggestionInnerProjectFile fileAPI = generateInnerProjectFileAPI(request.getContent(), disk_path);
                 projectCache.updateFileCache(file.getId(), fileAPI, time);
 
             }
@@ -526,29 +593,15 @@ public class EditorService {
 
 
                 // читаем файл
-                java.io.File openedFile = new java.io.File(filePath
+                String path = filePath
                         +fileEntity.getName()
                         +"."
-                        +fileEntity.getExtension());
+                        +fileEntity.getExtension();
 
-                StringBuilder fileContent = new StringBuilder();
-
-                try (FileReader fileReader = new FileReader(openedFile);
-                     BufferedReader bufferedReader = new BufferedReader(fileReader);
-                ){
-
-                    String line;
-                    while ((line = bufferedReader.readLine())!=null){
-
-                        fileContent.append(line).append("\n");
-                    }
-                }
-                catch (Exception e){
-                    throw new IllegalArgumentException("error while reading disk");
-                }
+                String content = CodeAnalysisUtils.readFileFromDisk(path); // если ошибка чтения с диска - критическая ошибка
 
                 // формируем api файла для кеша
-                CacheSuggestionInnerProjectFile suggestion = generateInnerProjectFileAPI(fileContent.toString());
+                CacheSuggestionInnerProjectFile suggestion = generateInnerProjectFileAPI(content, path);
 
                 // вносим полученный api в кеш ассоциации
 
@@ -591,9 +644,30 @@ public class EditorService {
 
 
     // генерируем api для внутреннего файла проекта - public и default компоненты
-    private CacheSuggestionInnerProjectFile generateInnerProjectFileAPI(String code){
-        CompilationUnit astTree = compile(code);
-        return CodeAnalysisUtils.generateInnerProjectFileAPI(astTree);
+    private CacheSuggestionInnerProjectFile generateInnerProjectFileAPI(String code, String filePath){
+
+        CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
+
+        try{
+            CompilationUnit astTree = compile(code);
+            file = CodeAnalysisUtils.generateInnerProjectFileAPI(astTree);
+            file.setParsed(true);
+
+
+        }
+        // ошибка анализа кода
+        catch (Exception e){
+            file.setParsed(false); // для логики - явно указываем, что парсинг закончился ошибкой
+        }
+
+        finally {
+            file.setFilePath(filePath);
+        }
+
+
+        return file;
+
+
     }
 
 
@@ -723,24 +797,6 @@ public class EditorService {
         info.getFields().addAll(staticFields);
         info.getMethods().addAll(nonStaticMethods);
         info.getFields().addAll(nonStaticFields);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

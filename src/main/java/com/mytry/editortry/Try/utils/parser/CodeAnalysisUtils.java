@@ -12,7 +12,6 @@ import com.github.javaparser.ast.nodeTypes.NodeWithBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithOptionalBlockStmt;
 import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.resolution.declarations.ResolvedDeclaration;
 import com.github.javaparser.resolution.types.ResolvedReferenceType;
 import com.github.javaparser.resolution.types.ResolvedType;
@@ -24,8 +23,10 @@ import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectType;
+import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectFile;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,31 @@ public class CodeAnalysisUtils {
 
 
     public final static List<String> mavenFolderStructure = List.of("src", "main","java","com");
+
+
+
+
+    // читаем файл
+    public static String readFileFromDisk(String path) throws IllegalArgumentException{
+        java.io.File openedFile = new java.io.File(path);
+
+        StringBuilder fileContent = new StringBuilder();
+
+        try (FileReader fileReader = new FileReader(openedFile);
+             BufferedReader bufferedReader = new BufferedReader(fileReader);
+        ){
+
+            String line;
+            while ((line = bufferedReader.readLine())!=null){
+
+                fileContent.append(line).append("\n");
+            }
+            return fileContent.toString();
+        }
+        catch (Exception e){
+            throw new IllegalArgumentException("error while reading disk");
+        }
+    }
 
 
 
@@ -131,7 +157,7 @@ public class CodeAnalysisUtils {
 
 
 
-    public static List<BasicSuggestionType> convertCacheAnswerToBasicSuggestionType(List<CacheSuggestionOuterProjectType> types){
+    public static List<BasicSuggestionType> convertCacheAnswerToBasicSuggestionType(List<CacheSuggestionOuterProjectFile> types){
         List<BasicSuggestionType> answer = new ArrayList<>();
         types.forEach(chosenType->{
             BasicSuggestionType basicSuggestionType = new BasicSuggestionType();
@@ -181,8 +207,8 @@ public class CodeAnalysisUtils {
 
 
     // публичный api - тут только публичные методы и типы
-    public static CacheSuggestionOuterProjectType generateOuterFileApi(CompilationUnit astTree) {
-        CacheSuggestionOuterProjectType type = new CacheSuggestionOuterProjectType();
+    public static CacheSuggestionOuterProjectFile generateOuterFileApi(CompilationUnit astTree) {
+        CacheSuggestionOuterProjectFile type = new CacheSuggestionOuterProjectFile();
 
 
         String packageDeclaration = (astTree.getPackageDeclaration().orElseThrow(() -> new IllegalArgumentException("no package")))
@@ -216,7 +242,11 @@ public class CodeAnalysisUtils {
 
     // формируем api для внутреннего файла проекта
     public static CacheSuggestionInnerProjectFile generateInnerProjectFileAPI(CompilationUnit astTree){
+
         CacheSuggestionInnerProjectFile file = new CacheSuggestionInnerProjectFile();
+
+
+
         String packageDeclaration = extractPackage(astTree);
 
         file.setPackageWay(packageDeclaration);
