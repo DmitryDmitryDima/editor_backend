@@ -38,6 +38,11 @@ public class Project {
     @JoinColumn(name = "entry_point_id", referencedColumnName = "id")
     private File entryPoint;
 
+    // проект не может быть запущен одновременно несколько раз
+    //
+    @Column
+    private Boolean running;
+
 
 
 

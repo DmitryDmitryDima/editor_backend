@@ -2,9 +2,11 @@ package com.mytry.editortry.Try.api;
 
 
 import com.mytry.editortry.Try.dto.execution.EntryPointSetRequest;
+import com.mytry.editortry.Try.dto.run.ProjectRunRequest;
 import com.mytry.editortry.Try.service.ExecutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,9 +23,19 @@ public class ExecutionAPI {
 
      */
     @PostMapping("/setEntryPoint")
-    public void setEntryPoint(EntryPointSetRequest request){
+    public void setEntryPoint(@RequestBody EntryPointSetRequest request){
         executionService.setEntryPoint(request);
     }
+
+    /*
+    запускаем проект - метод может быть вызван из разных точек приложения
+     */
+    @PostMapping("/run")
+    public void run(@RequestBody ProjectRunRequest request){
+        executionService.runProject(request);
+    }
+
+
 
 
 }
