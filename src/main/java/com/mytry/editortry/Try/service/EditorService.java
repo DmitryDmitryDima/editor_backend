@@ -18,6 +18,7 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import com.mytry.editortry.Try.utils.ProjectUtils;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectFile;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
@@ -90,7 +91,7 @@ public class EditorService {
 
         // получаем директорию com, проверяем, соответствует ли проект структуре maven
         Directory currentDirectory = project.getRoot();
-        for (String structureFolderName:CodeAnalysisUtils.mavenFolderStructure){
+        for (String structureFolderName: ProjectUtils.mavenFolderStructure){
             Optional<Directory> candidate = currentDirectory
                     .getChildren().stream().filter(directory->directory.getName().equals(structureFolderName)).findAny();
             if (candidate.isEmpty()) throw new IllegalArgumentException("invalid project structure");

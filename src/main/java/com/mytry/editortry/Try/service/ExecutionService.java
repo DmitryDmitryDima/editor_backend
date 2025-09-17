@@ -1,16 +1,21 @@
 package com.mytry.editortry.Try.service;
 
 import com.mytry.editortry.Try.dto.execution.EntryPointSetRequest;
+import com.mytry.editortry.Try.dto.projects.FileSearchInsideProjectResult;
 import com.mytry.editortry.Try.dto.run.ProjectRunRequest;
+import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
-import com.mytry.editortry.Try.utils.execution.ExecutionServiceUtils;
+import com.mytry.editortry.Try.utils.ProjectUtils;
+import com.mytry.editortry.Try.utils.processes.ExecutionProcessFactory;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Deque;
 import java.util.Optional;
 
 @Service
@@ -21,10 +26,16 @@ public class ExecutionService {
     @Autowired
     private FileRepository fileRepository;
 
+    @Autowired
+    private ExecutionProcessFactory processFactory;
+
+    @Value("${files.directory}")
+    private String disk_location;
+
 
     // проставляя entry point, мы должны внести изменения в pom.xlm, для этого нам необходимо сформировать путь к файлу
     @Transactional
-    public void setEntryPoint(EntryPointSetRequest request){
+    public void setEntryPoint(EntryPointSetRequest request) throws Exception {
 
         Project project = projectRepository.findById(request.getProjectId()).orElseThrow(()->new IllegalArgumentException("no such project exists"));
 
@@ -33,16 +44,37 @@ public class ExecutionService {
             throw new IllegalArgumentException("this file is already entry point");
         }
 
-        // проверяем, что файл принадлежит проекту с заданным айди
-        Optional<File> file = ExecutionServiceUtils
-                .findFileInsideProject(project.getRoot(), request.getFileId());
+        // попадаем в директорию с файлами проекта
+        Directory javaRoot = ProjectUtils.getMavenClassicalStructureRoot(project.getRoot());
 
-        if (file.isEmpty()){
+
+        // проверяем, что файл принадлежит проекту с заданным айди
+        Optional<FileSearchInsideProjectResult> fileInfo = ProjectUtils
+                .findFileInsideProjectWithTrace(javaRoot, request.getFileId());
+
+        if (fileInfo.isEmpty()){
             throw new IllegalArgumentException("this file is not a part of project");
         }
+        // только java файл может быть исполняемым
+        if (!fileInfo.get().getFile().getExtension().equals("java")){
+            throw new IllegalArgumentException("this file has not valid extension");
+        }
 
-        File entryPoint = file.get();
+        // создаем зависимость внутри базы данных
+        File entryPoint = fileInfo.get().getFile();
         project.setEntryPoint(entryPoint);
+
+        // формируем внутренний адрес файла (package)
+        String filePath = ProjectUtils.createPathFromAccumulatedCollection(fileInfo.get().getPath());
+        filePath = filePath.replace("/", ".")+entryPoint.getName();
+        // формируем путь к pom.xml
+        String username = project.getOwner().getUsername();
+        String projectname = project.getName();
+        String pomPath = disk_location+username+"/projects/"+projectname+"/pom.xml";
+        // получив данные, редактируем pom.xml
+        ProjectUtils.setMainClassInsidePomXML(pomPath, filePath);
+
+
 
 
 
@@ -58,7 +90,12 @@ public class ExecutionService {
             throw new IllegalStateException("no entry point");
         }
 
-        // блокируем проект
+        if (project.getRunning()){
+            throw new IllegalStateException("project is already running");
+        }
+
+        // блокируем проект, создаем процесс, последовательно выполняющий необходимые действия и отправляющий уведомления
+        project.setRunning(true);
 
     }
 
