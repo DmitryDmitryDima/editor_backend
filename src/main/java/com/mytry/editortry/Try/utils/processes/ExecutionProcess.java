@@ -1,16 +1,22 @@
 package com.mytry.editortry.Try.utils.processes;
 
+import org.springframework.scheduling.annotation.Async;
+
 // процесс генерирует события в отдельном потоке и отправляет их на хост
-public class ExecutionProcess implements Runnable{
+// необходима реализация прерывания
+public class ExecutionProcess {
 
     private ExecutionProcessFactory host;
     public ExecutionProcess(ExecutionProcessFactory factory){
         host = factory;
     }
 
-
-    @Override
-    public void run() {
+    @Async("projectExecutor")
+    public void start(){
 
     }
+
+
+
 }
+

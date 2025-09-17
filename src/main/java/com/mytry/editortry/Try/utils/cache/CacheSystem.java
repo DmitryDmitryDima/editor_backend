@@ -1,5 +1,7 @@
 package com.mytry.editortry.Try.utils.cache;
 
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionOuterProjectFile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

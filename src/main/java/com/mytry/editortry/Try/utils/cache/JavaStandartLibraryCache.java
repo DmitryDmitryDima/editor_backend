@@ -2,6 +2,7 @@ package com.mytry.editortry.Try.utils.cache;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionOuterProjectFile;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;

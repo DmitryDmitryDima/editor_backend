@@ -1,6 +1,6 @@
 package com.mytry.editortry.Try.dto.basicsuggestion;
 
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionInnerProjectFile;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

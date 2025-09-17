@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.utils.cache;
+package com.mytry.editortry.Try.utils.cache.components;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

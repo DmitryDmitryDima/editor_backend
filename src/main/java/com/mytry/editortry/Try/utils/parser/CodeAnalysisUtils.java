@@ -21,9 +21,9 @@ import com.mytry.editortry.Try.dto.basicsuggestion.EditorBasicSuggestionRequest;
 import com.mytry.editortry.Try.dto.basicsuggestion.ProjectCacheDTO;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionAnswer;
 import com.mytry.editortry.Try.dto.dotsuggestion.EditorDotSuggestionRequest;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectFile;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionInnerProjectType;
-import com.mytry.editortry.Try.utils.cache.CacheSuggestionOuterProjectFile;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionInnerProjectFile;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionInnerProjectType;
+import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionOuterProjectFile;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
