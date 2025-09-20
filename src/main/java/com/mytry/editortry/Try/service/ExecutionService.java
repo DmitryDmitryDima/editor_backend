@@ -3,6 +3,7 @@ package com.mytry.editortry.Try.service;
 import com.mytry.editortry.Try.dto.execution.EntryPointSetRequest;
 import com.mytry.editortry.Try.dto.projects.FileSearchInsideProjectResult;
 import com.mytry.editortry.Try.dto.run.ProjectRunRequest;
+import com.mytry.editortry.Try.dto.run.ProjectStopRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Deque;
 import java.util.Optional;
 
 @Service
@@ -82,20 +82,29 @@ public class ExecutionService {
 
     @Transactional
     public void runProject(ProjectRunRequest request){
+
+
+        // создаем и запускаем процесс (внутри создается отдельный контролируемый поток)
+        processFactory.createExecutionProcess(request.getProjectId());
+
+        System.out.println("end");
+
+
+
+    }
+
+
+    public void stopProject(ProjectStopRequest request){
+
         // проверяем, существует ли проект
-        Project project = projectRepository.findById(request.getProjectId()).orElseThrow(()->new IllegalArgumentException("no such project exists"));
-        // проверяем, существует ли точка входа в проект
-        File entryPoint = project.getEntryPoint();
-        if (entryPoint==null){
-            throw new IllegalStateException("no entry point");
+        Project project = projectRepository.findById(request.getProjectId())
+                .orElseThrow(()->new IllegalArgumentException("no such project exists"));
+        // проверяем, не является проект уже остановленным
+        if (!project.isRunning()) {
+            throw new IllegalStateException("project already stopped");
         }
-
-        if (project.getRunning()){
-            throw new IllegalStateException("project is already running");
-        }
-
-        // блокируем проект, создаем процесс, последовательно выполняющий необходимые действия и отправляющий уведомления
-        project.setRunning(true);
+        // уничтожаем процесс, ассоциированный с проектом
+        processFactory.stopExecutionProcess(request.getProjectId());
 
     }
 

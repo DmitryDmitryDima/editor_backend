@@ -3,6 +3,7 @@ package com.mytry.editortry.Try.api;
 
 import com.mytry.editortry.Try.dto.execution.EntryPointSetRequest;
 import com.mytry.editortry.Try.dto.run.ProjectRunRequest;
+import com.mytry.editortry.Try.dto.run.ProjectStopRequest;
 import com.mytry.editortry.Try.service.ExecutionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -37,6 +38,18 @@ public class ExecutionAPI {
         executionService.runProject(request);
         return ResponseEntity.noContent().build();
     }
+
+    /*
+    принудительно завершаем выполнение проект
+     */
+
+    @PostMapping("/stop")
+    public ResponseEntity<Void> stop(@RequestBody ProjectStopRequest request){
+        executionService.stopProject(request);
+        return ResponseEntity.noContent().build();
+    }
+
+
 
 
 

@@ -1,6 +1,6 @@
 package com.mytry.editortry.Try.utils.websocket.stomp;
 
-import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
+import com.mytry.editortry.Try.utils.websocket.stomp.events.WebSocketEventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.MetaInfo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,7 +17,7 @@ public class RealtimeEvent{
     private String event_id;
 
     // тип ивента - базируясь на нем фронтенд будет думать, что делать
-    private EventType type;
+    private WebSocketEventType type;
 
 
     // время события - критично важно для синхронизации параллельных действий

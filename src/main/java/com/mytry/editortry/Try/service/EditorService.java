@@ -25,7 +25,7 @@ import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
-import com.mytry.editortry.Try.utils.websocket.stomp.events.EventType;
+import com.mytry.editortry.Try.utils.websocket.stomp.events.WebSocketEventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -399,7 +399,7 @@ public class EditorService {
         todo данный функционал может изменится с введением авторизации через токены
          */
         RealtimeEvent realtimeEvent = new RealtimeEvent();
-        realtimeEvent.setType(EventType.FILE_SAVE);
+        realtimeEvent.setType(WebSocketEventType.FILE_SAVE);
         realtimeEvent.setTime(time);
         FileSaveInfo fileSaveInfo = new FileSaveInfo();
         fileSaveInfo.setProject_id(project.getId());

@@ -41,7 +41,7 @@ public class Project {
     // проект не может быть запущен одновременно несколько раз
     //
     @Column
-    private Boolean running;
+    private boolean running;
 
 
 
