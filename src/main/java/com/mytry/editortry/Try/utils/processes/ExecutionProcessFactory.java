@@ -37,7 +37,16 @@ public class ExecutionProcessFactory {
         processes.put(projectId, executionProcess);
 
 
-        executionProcess.start();
+        try {
+            executionProcess.start();
+        }
+        catch (Exception e){
+
+        }
+        finally {
+            processes.remove(projectId);
+        }
+
     }
 
     // ручная остановка процесса

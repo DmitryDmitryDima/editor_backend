@@ -41,6 +41,7 @@ public class ExecutionProcess {
         jarProcessBuilder.directory(new File(projectDirectory));
         Process process = jarProcessBuilder.start();
 
+
         try (final InputStream stdoutInputStream = process.getInputStream();
              final BufferedReader stdoutReader =
                      new BufferedReader(new InputStreamReader(stdoutInputStream))
@@ -77,7 +78,7 @@ public class ExecutionProcess {
 
 
 
-    public void start(){
+    public void start() throws Exception{
 
 
         if (running.compareAndSet(false, true)){
@@ -103,6 +104,7 @@ public class ExecutionProcess {
             catch (Exception exception){
                 state.onEvent(generateExecutionEvent(ProcessEventType.PROCESS_ERROR,
                         "execution interrupted with message "+exception.getMessage()));
+                throw new Exception(exception.getMessage());
             }
             finally {
 

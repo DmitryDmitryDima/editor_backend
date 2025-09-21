@@ -11,15 +11,22 @@ import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.ProjectUtils;
 import com.mytry.editortry.Try.utils.processes.ExecutionProcessFactory;
+import com.mytry.editortry.Try.utils.processes.ExecutionProcessWithCallback;
+import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessCreationEvent;
+import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessErrorEvent;
+import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessInterruptionEvent;
+import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessMessageEvent;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
-public class ExecutionService {
+public class ExecutionService  {
 
     @Autowired
     private ProjectRepository projectRepository;
@@ -31,6 +38,9 @@ public class ExecutionService {
 
     @Value("${files.directory}")
     private String disk_location;
+
+    @Autowired
+    private ApplicationEventPublisher publisher;
 
 
     // проставляя entry point, мы должны внести изменения в pom.xlm, для этого нам необходимо сформировать путь к файлу
@@ -80,21 +90,49 @@ public class ExecutionService {
 
     }
 
-    @Transactional
+
     public void runProject(ProjectRunRequest request){
 
 
+
+        ExecutionProcessWithCallback preparedProcess = new ExecutionProcessWithCallback(
+                (ExecutionProcessInterruptionEvent evt)->publisher.publishEvent(evt),
+                (ExecutionProcessMessageEvent evt)->publisher.publishEvent(evt),
+                (ExecutionProcessErrorEvent evt)->publisher.publishEvent(evt),
+                request.getProjectId()
+        );
+
+        ExecutionProcessCreationEvent creationEvent = new ExecutionProcessCreationEvent(this, preparedProcess);
+        publisher.publishEvent(creationEvent);
+
+        System.out.println("project run");
+
+
+
+        /*
         // создаем и запускаем процесс (внутри создается отдельный контролируемый поток)
         processFactory.createExecutionProcess(request.getProjectId());
 
         System.out.println("end");
 
 
+         */
+
 
     }
 
 
     public void stopProject(ProjectStopRequest request){
+
+        ExecutionProcessInterruptionEvent interruptionEvent = new ExecutionProcessInterruptionEvent(this,
+                request.getProjectId(),
+                ExecutionProcessInterruptionEvent.InterruptionType.External);
+
+        publisher.publishEvent(interruptionEvent);
+
+        System.out.println("project stop");
+
+        /*
 
         // проверяем, существует ли проект
         Project project = projectRepository.findById(request.getProjectId())
@@ -105,6 +143,8 @@ public class ExecutionService {
         }
         // уничтожаем процесс, ассоциированный с проектом
         processFactory.stopExecutionProcess(request.getProjectId());
+
+         */
 
     }
 
