@@ -1,7 +1,5 @@
 package com.mytry.editortry.Try.utils.processes;
 
-import com.mytry.editortry.Try.model.File;
-import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessCreationEvent;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessInterruptionEvent;
@@ -15,9 +13,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionalEventListener;
 
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 // бин, слушающий запросы на запуск
@@ -25,7 +21,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProcessStateManager {
 
     @Autowired
-    private ProjectRepository projectRepository;
+    private ProjectDatabaseLock databaseLock;
+
+
 
     // точка для передачи вебсокет сообщений
     @Autowired
@@ -63,30 +61,26 @@ public class ProcessStateManager {
              notifier.convertAndSend("/projects/"+interruptionEvent.getProjectId(), websocketEvent);
 
 
-             Project project = projectRepository.findById(interruptionEvent.getProjectId()).orElseThrow(()->
-                 new IllegalStateException("process event trying to access non existent project")
-             );
 
-             // меняем флаг
-             project.setRunning(false);
+
+             try {
+                 databaseLock.unlock(interruptionEvent.getProjectId());
+             }
+             catch (Exception e){
+                 // внутренняя ошибка
+             }
 
 
 
 
          // событие пришло извне - мы должны найти процесс и послать ему сигнал об остановке
          } else {
-             Optional<Project> projectCheck = projectRepository.findById(interruptionEvent.getProjectId());
-             if (projectCheck.isEmpty()){
-                 ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("no such project exists",
-                         WebSocketEventType.PROCESS_INIT_ERROR);
-                 notifier.convertAndSend("/projects/"+interruptionEvent.getProjectId(), websocketEvent);
 
-                 return;
+             try {
+                 databaseLock.checkIfStopped(interruptionEvent.getProjectId());
              }
-
-             Project project = projectCheck.get();
-             if (!project.isRunning()){
-                 ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("project is already stopped",
+             catch (Exception e){
+                 ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(e.getMessage(),
                          WebSocketEventType.PROCESS_STOP_ERROR);
                  notifier.convertAndSend("/projects/"+interruptionEvent.getProjectId(), websocketEvent);
                  return;
@@ -94,68 +88,46 @@ public class ProcessStateManager {
 
              // если все хорошо - останавливаем процесс, после чего он сам сгенерирует событие остановки
 
-            ExecutionProcessWithCallback process = processes.get(interruptionEvent.getProjectId());
-            if (process!=null){
-                process.stop();
-            }
+             ExecutionProcessWithCallback process = processes.get(interruptionEvent.getProjectId());
+             if (process!=null){
+                 process.stop();
+             }
+
          }
 
 
     }
 
 
-    @Transactional
+
     @EventListener
     @Async("projectExecutor")
     public void createProcess(ExecutionProcessCreationEvent event){
         System.out.println("creation event start");
 
         ExecutionProcessWithCallback preparedProcess = event.getProcess();
-        Optional<Project> projectCheck = projectRepository.findById(preparedProcess.getProjectId());
-        if (projectCheck.isEmpty()){
-            ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("no such project exists",
+
+        String path;
+
+        try {
+            path = databaseLock.lockProjectAndGenerateDiskPath(preparedProcess.getProjectId());
+        }
+        catch (Exception e){
+            ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(e.getMessage(),
                     WebSocketEventType.PROCESS_INIT_ERROR);
             notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(),websocketEvent);
 
             return;
         }
 
-        Project project = projectCheck.get();
 
-
-
-
-        // проверяем, существует ли точка входа в проект
-        File entryPoint = project.getEntryPoint();
-        if (entryPoint==null){
-            ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("no entry point",
-                    WebSocketEventType.PROCESS_INIT_ERROR);
-            notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(),websocketEvent);
-            return;
-        }
-
-
-
-
-
-        if (project.isRunning()){
-            ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("project is already running",
-                    WebSocketEventType.PROCESS_INIT_ERROR);
-            notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(),websocketEvent);
-            return;
-        }
-
-
-
-        // блокируем проект, создаем процесс, последовательно выполняющий необходимые действия и отправляющий уведомления
-        project.setRunning(true);
 
         ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("project execution initialization...",
                 WebSocketEventType.PROCESS_INIT);
         notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(), websocketEvent);
 
         // подготавливаем процесс к запуску
-        preparedProcess.setProjectDirectory(disk_address+project.getOwner().getUsername()+"/projects/"+project.getName()+"/");
+        preparedProcess.setProjectDirectory(disk_address+path);
 
         // заносим в хранилище процессов // todo баг кейс - процесс уже существует
         processes.put(preparedProcess.getProjectId(), preparedProcess);

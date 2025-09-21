@@ -10,7 +10,6 @@ import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.utils.ProjectUtils;
-import com.mytry.editortry.Try.utils.processes.ExecutionProcessFactory;
 import com.mytry.editortry.Try.utils.processes.ExecutionProcessWithCallback;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessCreationEvent;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessErrorEvent;
@@ -20,7 +19,6 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -33,8 +31,7 @@ public class ExecutionService  {
     @Autowired
     private FileRepository fileRepository;
 
-    @Autowired
-    private ExecutionProcessFactory processFactory;
+
 
     @Value("${files.directory}")
     private String disk_location;
@@ -105,18 +102,10 @@ public class ExecutionService  {
         ExecutionProcessCreationEvent creationEvent = new ExecutionProcessCreationEvent(this, preparedProcess);
         publisher.publishEvent(creationEvent);
 
-        System.out.println("project run");
 
 
 
-        /*
-        // создаем и запускаем процесс (внутри создается отдельный контролируемый поток)
-        processFactory.createExecutionProcess(request.getProjectId());
 
-        System.out.println("end");
-
-
-         */
 
 
     }
@@ -130,21 +119,9 @@ public class ExecutionService  {
 
         publisher.publishEvent(interruptionEvent);
 
-        System.out.println("project stop");
 
-        /*
 
-        // проверяем, существует ли проект
-        Project project = projectRepository.findById(request.getProjectId())
-                .orElseThrow(()->new IllegalArgumentException("no such project exists"));
-        // проверяем, не является проект уже остановленным
-        if (!project.isRunning()) {
-            throw new IllegalStateException("project already stopped");
-        }
-        // уничтожаем процесс, ассоциированный с проектом
-        processFactory.stopExecutionProcess(request.getProjectId());
 
-         */
 
     }
 

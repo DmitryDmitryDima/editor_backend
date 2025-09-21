@@ -116,6 +116,8 @@ public class ExecutionProcessWithCallback {
 
         checkInterruption();
 
+        //Thread.sleep(10000);
+
 
 
         // todo процесс нужно вынести в AtomicReference
