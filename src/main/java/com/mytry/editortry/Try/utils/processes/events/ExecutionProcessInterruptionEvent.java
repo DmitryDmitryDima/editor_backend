@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationEvent;
 public class ExecutionProcessInterruptionEvent extends ApplicationEvent {
     private Long projectId;
     private InterruptionType interruptionType;
+    private String directory;
 
 
     public ExecutionProcessInterruptionEvent(Object source, Long projectId, InterruptionType interruptionType) {

@@ -91,7 +91,7 @@ public class ExecutionService  {
     public void runProject(ProjectRunRequest request){
 
 
-
+        // готовим процесс со всей нужной информацией, в том числе с нужными для процесса коллбеками
         ExecutionProcessWithCallback preparedProcess = new ExecutionProcessWithCallback(
                 (ExecutionProcessInterruptionEvent evt)->publisher.publishEvent(evt),
                 (ExecutionProcessMessageEvent evt)->publisher.publishEvent(evt),
@@ -99,6 +99,7 @@ public class ExecutionService  {
                 request.getProjectId()
         );
 
+        // публикуем ивент создания процесса, передавая в нем сам процесс. Ивент ловится в ProcessStateManager
         ExecutionProcessCreationEvent creationEvent = new ExecutionProcessCreationEvent(this, preparedProcess);
         publisher.publishEvent(creationEvent);
 

@@ -10,10 +10,12 @@ public class ExecutionProcessMessageEvent extends ApplicationEvent {
 
     private String message;
     private Long projectId;
+    private String directory;
 
-    public ExecutionProcessMessageEvent(Object source, String message, Long projectId) {
+    public ExecutionProcessMessageEvent(Object source, String message, Long projectId, String directory) {
         super(source);
         this.message = message;
         this.projectId = projectId;
+        this.directory = directory;
     }
 }

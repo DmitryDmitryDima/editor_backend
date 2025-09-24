@@ -14,6 +14,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 
 // бин, слушающий запросы на запуск
@@ -29,8 +30,13 @@ public class ProcessStateManager {
     @Autowired
     private SimpMessagingTemplate notifier;
 
+    @Autowired
+    private ProjectLogger projectLogger;
+
     @Value("${files.directory}")
     private String disk_address;
+
+
 
 
     // база активных процессов. Через нее можно контролировать жизненный цик процессс. Ключ - айди проекта
@@ -42,6 +48,10 @@ public class ProcessStateManager {
         ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(messageEvent.getMessage(),
                 WebSocketEventType.PROCESS_MESSAGE);
         notifier.convertAndSend("/projects/"+messageEvent.getProjectId(), websocketEvent);
+
+        // логируем в файл
+        projectLogger.addToLog(messageEvent.getMessage(), messageEvent.getDirectory());
+
     }
 
 
@@ -63,6 +73,7 @@ public class ProcessStateManager {
 
 
 
+
              try {
                  databaseLock.unlock(interruptionEvent.getProjectId());
              }
@@ -70,10 +81,13 @@ public class ProcessStateManager {
                  // внутренняя ошибка
              }
 
+             // логируем
+             projectLogger.addToLog("process stopped at "+Instant.now(), interruptionEvent.getDirectory());
 
 
 
-         // событие пришло извне - мы должны найти процесс и послать ему сигнал об остановке
+
+         // событие пришло извне - мы должны найти процесс и послать ему сигнал об остановке, после чего он уже сформируем свое событие
          } else {
 
              try {
@@ -129,10 +143,21 @@ public class ProcessStateManager {
         // подготавливаем процесс к запуску
         preparedProcess.setProjectDirectory(disk_address+path);
 
+
         // заносим в хранилище процессов // todo баг кейс - процесс уже существует
         processes.put(preparedProcess.getProjectId(), preparedProcess);
 
+        // логируем запись о старте
+        projectLogger.clearLog(disk_address+path);
+        projectLogger.addToLog("project start at "+ Instant.now(), disk_address+path);
+
+
+
         preparedProcess.start();
+
+
+
+
 
 
 

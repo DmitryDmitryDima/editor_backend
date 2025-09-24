@@ -15,6 +15,8 @@ public class ProjectDTO {
 
     private String name;
 
+    private boolean running;
+
 
 
 

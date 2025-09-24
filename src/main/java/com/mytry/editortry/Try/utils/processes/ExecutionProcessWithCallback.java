@@ -3,7 +3,6 @@ package com.mytry.editortry.Try.utils.processes;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessErrorEvent;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessInterruptionEvent;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessMessageEvent;
-import com.mytry.editortry.Try.utils.processes.events.ProcessEventType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,6 +32,8 @@ public class ExecutionProcessWithCallback {
 
     private AtomicReference<Thread> workingThread = new AtomicReference<>(null);
 
+    private AtomicReference<Process> currentProcess = new AtomicReference<>(null);
+
     @Setter
     private String projectDirectory;
 
@@ -49,17 +50,35 @@ public class ExecutionProcessWithCallback {
 
     // проверка на прерванность потока юзером
     private void checkInterruption() throws InterruptedException{
+        // процесс мертв
+        if (currentProcess.get()!=null && !currentProcess.get().isAlive()){
+            throw new InterruptedException("process was stopped");
+        }
+        // запуск вручную остановлен пользователем
         if (!running.get()){
             throw new InterruptedException("project was stopped");
         }
         if (Thread.currentThread().isInterrupted()){
             throw new InterruptedException("thread was interrupted");
         }
+
+
     }
 
-    // метод для остановки потока "снаружи"
+    // метод для остановки потока во время исполнения - вызывается пользователем с фронта или потоком в случае ошибки внешнего процесса
     public void stop(){
         if (running.compareAndSet(true, false)){
+
+            // принудительно убиваем текущий внешний процесс
+            Process process = currentProcess.get();
+            if (process!=null){
+                process.destroy();
+                if (process.isAlive()){
+                    process.destroyForcibly();
+                }
+            }
+
+            // прерываем сам поток
             if (workingThread.get()!=null){
                 workingThread.get().interrupt();
             }
@@ -86,20 +105,27 @@ public class ExecutionProcessWithCallback {
 
 
                 createFatJar();
+                messageCallback.accept(new ExecutionProcessMessageEvent(this, "Successful compilation", projectId,
+                        projectDirectory));
+                runJar();
 
-                messageCallback.accept(new ExecutionProcessMessageEvent(this, "Success:end of execution", projectId));
+
+                messageCallback.accept(new ExecutionProcessMessageEvent(this, "Execution completed", projectId,
+                        projectDirectory));
             }
             catch (Exception exception){
                 errorCallback.accept(new ExecutionProcessErrorEvent(this,
-                        "Error!: "+exception.getMessage(), projectId));
+                        "Error!: "+exception.getMessage(), projectId, projectDirectory));
 
             }
             finally {
 
-                interruptionCallback.accept(new ExecutionProcessInterruptionEvent(this,
-                        projectId,
-                        ExecutionProcessInterruptionEvent
-                        .InterruptionType.Internal));
+                // внутренний ивент остановки - последний в ходе выполнения процесса
+                ExecutionProcessInterruptionEvent interruptionEvent = new ExecutionProcessInterruptionEvent(this,
+                        projectId, ExecutionProcessInterruptionEvent.InterruptionType.Internal);
+                interruptionEvent.setDirectory(projectDirectory);
+
+                interruptionCallback.accept(interruptionEvent);
             }
 
 
@@ -110,20 +136,27 @@ public class ExecutionProcessWithCallback {
 
     }
 
+    // запускаем jar (временная реализация с прямым запуском jvm
+    private void runJar() throws Exception{
+        checkInterruption();
+    }
+
 
     // создаем исполняемый jar файл со всеми зависимостями
     private void createFatJar() throws Exception{
 
         checkInterruption();
 
-        //Thread.sleep(10000);
 
 
 
-        // todo процесс нужно вынести в AtomicReference
+
+
         ProcessBuilder jarProcessBuilder = new ProcessBuilder("mvn.cmd", "package");
+        jarProcessBuilder.redirectErrorStream(true); // объединяем поток ошибок и поток стандартного лога
         jarProcessBuilder.directory(new File(projectDirectory));
         Process process = jarProcessBuilder.start();
+        currentProcess.set(process);
 
 
         try (final InputStream stdoutInputStream = process.getInputStream();
@@ -133,12 +166,20 @@ public class ExecutionProcessWithCallback {
             String out;
             while (running.get() && (out = stdoutReader.readLine()) != null) {
 
-                messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId));
+                messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
             }
         }
         catch (Exception e){
             throw new Exception(e.getMessage());
         }
+
+        int exitCode = process.waitFor();
+        if (exitCode!=0){
+            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error", projectId, projectDirectory));
+            // меняем флаг, прерываем поток
+            stop();
+        }
+
 
 
 
