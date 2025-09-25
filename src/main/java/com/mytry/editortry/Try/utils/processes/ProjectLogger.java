@@ -61,7 +61,7 @@ public class ProjectLogger {
     }
 
 
-    // todo загружаем лог
+    // загружаем текущее состояние лога
     public void loadLog(String from){
 
     }
