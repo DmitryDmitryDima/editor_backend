@@ -24,6 +24,15 @@ public class EditorFileReadAnswer {
     private Instant updatedAt;
 
 
+    private String projectLog;
+
+    // запущен ли проект, частью которого является файл
+    private boolean running;
+
+    // является ли рассматриваемый файл точкой входа (запуска)
+    private boolean entryPoint;
+
+
 
 
 

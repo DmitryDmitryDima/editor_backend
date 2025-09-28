@@ -24,6 +24,7 @@ import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionOuterProjec
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.cache.ProjectCache;
 import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
+import com.mytry.editortry.Try.utils.processes.ProjectLogger;
 import com.mytry.editortry.Try.utils.websocket.stomp.RealtimeEvent;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.WebSocketEventType;
 import com.mytry.editortry.Try.utils.websocket.stomp.events.FileSaveInfo;
@@ -63,6 +64,10 @@ public class EditorService {
     private ProjectRepository projectRepository;
     @Autowired
     private FileRepository fileRepository;
+
+    // для загрузки текущего состояния лога
+    @Autowired
+    private ProjectLogger projectLogger;
 
 
     // точка для передачи вебсокет сообщений
@@ -471,6 +476,11 @@ public class EditorService {
                 .orElseThrow(()-> new IllegalArgumentException("project not found")
                 );
 
+
+
+
+
+
         /*
         суть дальнейшего алгоритма - мы сравниваем полученный путь со структурой проекта в базе данных (начиная с root)
         Наша цель - добраться до сущности file
@@ -515,11 +525,13 @@ public class EditorService {
         }
 
         // проверка пути завершена - загружаем содержимое файла из диска
-        String disk_path = disk_directory+"/"+username+"/projects/"+projectname+"/"+fullPath;
+        String project_path = disk_directory+"/"+username+"/projects/"+projectname+"/";
+        String file_path = project_path+fullPath;
+
         String content;
 
         try {
-            content = Files.readString(Path.of(disk_path), StandardCharsets.UTF_8);
+            content = Files.readString(Path.of(file_path), StandardCharsets.UTF_8);
         }
         catch (IOException ioException){
             throw new RuntimeException("fiel read error");
@@ -530,6 +542,33 @@ public class EditorService {
         editorFileReadAnswer.setProject_id(project.getId());
         editorFileReadAnswer.setUpdatedAt(Instant.now());
         editorFileReadAnswer.setContent(content);
+
+
+        /*
+        текущее состояние лога
+         */
+        try {
+            String currentLogState = projectLogger.loadLog(project.getId(), project_path );
+            editorFileReadAnswer.setProjectLog(currentLogState);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+        // запущен ли проект, к которому относится файл
+        editorFileReadAnswer.setRunning(project.isRunning());
+
+        // является ли загружаемый файл точкой входа?
+        File entryPoint = project.getEntryPoint();
+        if (entryPoint!=null){
+            editorFileReadAnswer.setEntryPoint(entryPoint.getId().equals(file.getId()));
+        }
+
+
+
+
+
+
 
         return editorFileReadAnswer;
 

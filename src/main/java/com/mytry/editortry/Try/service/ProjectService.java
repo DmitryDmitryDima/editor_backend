@@ -16,6 +16,7 @@ import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
+import com.mytry.editortry.Try.utils.processes.ProjectLogger;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -49,6 +50,8 @@ public class ProjectService {
     @Autowired
     private FileRepository fileRepository;
 
+    @Autowired
+    private ProjectLogger projectLogger;
 
     @Autowired
     private CacheSystem cacheSystem;
@@ -772,6 +775,17 @@ public class ProjectService {
 
         projectDTO.setRoot(rootDTO);
         projectDTO.setFlatTree(flatTree);
+
+        projectDTO.setRunning(project.isRunning());
+
+        try{
+            String folderPath = disk_location+project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
+            String log = projectLogger.loadLog(project.getId(), folderPath);
+            projectDTO.setProjectLog(log);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
 
 
         return projectDTO;

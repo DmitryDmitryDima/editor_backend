@@ -24,8 +24,11 @@ public class ProjectDTO {
 
     private Map<String, FlatTreeMember> flatTree;
 
-    /*
-    private Date lastView;
-     */
+
+
+
+    private String projectLog;
+
+
 
 }
