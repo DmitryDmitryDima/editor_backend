@@ -205,7 +205,7 @@ public class ExecutionProcessWithCallback {
             String out;
             while (running.get() && (out = stdoutReader.readLine()) != null) {
 
-                messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
+                //messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
             }
         }
         catch (Exception e){
