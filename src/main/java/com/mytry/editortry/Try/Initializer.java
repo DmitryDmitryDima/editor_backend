@@ -116,6 +116,9 @@ public class Initializer implements CommandLineRunner {
                 }
 
                 else {
+                    if (f.getName().equals("current.log")){
+                        continue; // лог невидим для пользователя в древе
+                    }
                     File file = new File();
                     String fullName = f.getName();
                     int lastIndex = fullName.lastIndexOf(".");

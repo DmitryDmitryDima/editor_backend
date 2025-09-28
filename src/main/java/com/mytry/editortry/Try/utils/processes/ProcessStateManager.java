@@ -50,7 +50,7 @@ public class ProcessStateManager {
         notifier.convertAndSend("/projects/"+messageEvent.getProjectId(), websocketEvent);
 
         // логируем в файл
-        projectLogger.addToLog(messageEvent.getMessage(), messageEvent.getDirectory());
+        projectLogger.addToLog(messageEvent.getMessage(), messageEvent.getProjectId(), messageEvent.getDirectory());
 
     }
 
@@ -82,7 +82,10 @@ public class ProcessStateManager {
              }
 
              // логируем
-             projectLogger.addToLog("process stopped at "+Instant.now(), interruptionEvent.getDirectory());
+             projectLogger.addToLog("process stopped at "+Instant.now(), interruptionEvent.getProjectId(),
+                     interruptionEvent.getDirectory());
+
+             projectLogger.clearLockObject(interruptionEvent.getProjectId());
 
 
 
@@ -148,8 +151,9 @@ public class ProcessStateManager {
         processes.put(preparedProcess.getProjectId(), preparedProcess);
 
         // логируем запись о старте
-        projectLogger.clearLog(disk_address+path);
-        projectLogger.addToLog("project start at "+ Instant.now(), disk_address+path);
+        projectLogger.clearLog(preparedProcess.getProjectId(), disk_address+path);
+        projectLogger.addToLog("project start at "+ Instant.now(),
+                preparedProcess.getProjectId(), disk_address+path);
 
 
 
