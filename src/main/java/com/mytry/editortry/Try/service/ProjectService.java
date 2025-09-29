@@ -780,8 +780,9 @@ public class ProjectService {
 
         try{
             String folderPath = disk_location+project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
-            String log = projectLogger.loadLog(project.getId(), folderPath);
-            projectDTO.setProjectLog(log);
+            List<String> logLines = projectLogger.loadLogLines(project.getId(), folderPath);
+            projectDTO.setProjectLogLines(logLines);
+
         }
         catch (Exception e){
             e.printStackTrace();

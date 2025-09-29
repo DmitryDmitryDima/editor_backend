@@ -7,8 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 
 // сервис, отвечающий за запись информации от запущенного проекта в лог
 @Service
@@ -77,10 +79,11 @@ public class ProjectLogger {
     }
 
 
-    // загружаем текущее состояние лога
+    // загружаем текущее состояние лога в виде строки
     public String loadLog(Long projectId, String folderPath){
         lock(projectId);
         try {
+
             return Files.readString(Path.of(folderPath, logFileName));
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -91,6 +94,23 @@ public class ProjectLogger {
         }
 
     }
+
+    // загружаем текущее состояния лога построчно
+    public List<String> loadLogLines(Long projectId, String folderPath){
+        lock(projectId);
+        try (Stream<String> log =Files.lines(Path.of(folderPath, logFileName)) ) {
+            return log.toList();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        finally {
+            unlock(projectId);
+            // clearLockObject(projectId); // маленькая вероятность утечки
+        }
+
+    }
+
+
 
     // проверяем существование файла
     private void checkExistence(String folderPath) throws IOException {

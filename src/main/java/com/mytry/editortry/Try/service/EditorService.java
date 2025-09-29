@@ -548,8 +548,9 @@ public class EditorService {
         текущее состояние лога
          */
         try {
-            String currentLogState = projectLogger.loadLog(project.getId(), project_path );
-            editorFileReadAnswer.setProjectLog(currentLogState);
+
+            List<String> logLines = projectLogger.loadLogLines(project.getId(), project_path);
+            editorFileReadAnswer.setProjectLogLines(logLines);
         }
         catch (Exception e){
             e.printStackTrace();

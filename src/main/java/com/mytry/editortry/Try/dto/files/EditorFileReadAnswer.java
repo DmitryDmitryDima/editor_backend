@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -24,7 +25,9 @@ public class EditorFileReadAnswer {
     private Instant updatedAt;
 
 
-    private String projectLog;
+
+
+    private List<String> projectLogLines;
 
     // запущен ли проект, частью которого является файл
     private boolean running;
