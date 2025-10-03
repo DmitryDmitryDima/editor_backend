@@ -65,7 +65,11 @@ public class ProjectService {
 
 
     @Value("${files.directory}")
-    private String disk_location;
+    private String disk_location_user_filebase;
+
+    @Value("${common.directory}")
+    private String disk_location_common_system_directory;
+
 
 
     // загрузка дерева проекта
@@ -184,26 +188,47 @@ public class ProjectService {
         // пишем файл pom.xml
         Files.createFile(Path.of(rootPath+"/pom.xml"));
 
+        // загружаем стандартную структуру pom.xml для проекта maven с возможностью сборки fat jar
+        String minimalPom = Files.readString(Path.of(disk_location_common_system_directory, "standart_pom.txt")).formatted(
+                root.getName()+"-project"
+        );
+
 
         /*
-        генерируем минимальный pom.xml
-         */
         String minimalPom = """
                 <project>
-                    <modelVersion>4.0.0</modelVersion>
-                    <groupId>com.example</groupId>
-                    <artifactId>%s</artifactId>
-                    <version>1.0-SNAPSHOT</version>
-                    <build>
-                        <plugins>
-                          <plugin>
-                            <groupId>org.apache.maven.plugins</groupId>
-                            <artifactId>maven-compiler-plugin</artifactId>
-                          </plugin>
-                        </plugins>
-                        </build>
-                </project>
-                """.formatted(root.getName()+"-project");
+        <modelVersion>4.0.0</modelVersion>
+        <groupId>com.example</groupId>
+        <artifactId>%s</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <build>
+        <plugins>
+        <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+        <execution>
+        <id>shade</id>
+        <goals>
+        <goal>shade</goal>
+        </goals>
+        <configuration>
+        <finalName>fatjar</finalName>
+        <transformers>
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+        <mainClass>Unknown</mainClass>
+        </transformer>
+        </transformers>
+        </configuration>
+        </execution>
+        </executions>
+        </plugin>
+        </plugins>
+        </build>
+        </project>
+                        """.formatted(root.getName()+"-project");
+
+
+         */
 
 
 
@@ -262,7 +287,7 @@ public class ProjectService {
 
 
         // сохранение директории на диске
-        java.io.File dir = new java.io.File(disk_location+username+"/projects/"+projectName);
+        java.io.File dir = new java.io.File(disk_location_user_filebase +username+"/projects/"+projectName);
         System.out.println(dir.getAbsolutePath());
         if (!dir.exists()){
             boolean result  = dir.mkdir();
@@ -313,7 +338,7 @@ public class ProjectService {
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
                 .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location+"/"+username+"/projects/";
+        String fullPath = disk_location_user_filebase +"/"+username+"/projects/";
         Directory parent = null;
 
         if (index.equals("basic_root")){
@@ -445,7 +470,7 @@ public class ProjectService {
         StringBuilder sb = new StringBuilder("/"+username+"/projects/");
         way.forEach(sb::append);
 
-        String fullPath = disk_location+sb+directory.getName()+"/";
+        String fullPath = disk_location_user_filebase +sb+directory.getName()+"/";
 
 
         // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
@@ -506,7 +531,7 @@ public class ProjectService {
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
                 .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location+"/"+username+"/projects/";
+        String fullPath = disk_location_user_filebase +"/"+username+"/projects/";
         Directory parent = null;
 
         if (index.equals("basic_root")){
@@ -665,7 +690,7 @@ public class ProjectService {
         StringBuilder sb = new StringBuilder("/"+username+"/projects/");
         way.forEach(sb::append);
 
-        String fullPath = disk_location+sb+file.getName()+"."+file.getExtension();
+        String fullPath = disk_location_user_filebase +sb+file.getName()+"."+file.getExtension();
 
 
         // если найденный parentId не совпадает с root id проекта - то существует нарушение логики в базе данных
@@ -779,7 +804,7 @@ public class ProjectService {
         projectDTO.setRunning(project.isRunning());
 
         try{
-            String folderPath = disk_location+project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
+            String folderPath = disk_location_user_filebase +project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
             List<String> logLines = projectLogger.loadLogLines(project.getId(), folderPath);
             projectDTO.setProjectLogLines(logLines);
 

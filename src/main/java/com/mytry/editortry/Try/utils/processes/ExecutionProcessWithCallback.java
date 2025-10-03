@@ -10,11 +10,21 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class ExecutionProcessWithCallback {
+
+    // JDK_SERVER_RUN - not for final dev
+    static enum PROCESS_STEP{
+        JAR_COMPILE, JDK_SERVER_RUN,
+        DOCKER_IMAGE_BUILD,
+        DOCKER_CONTAINER_RUN,
+        DOCKER_CONTAINER_REMOVE,
+        DOCKER_IMAGE_REMOVE
+    }
 
     // interruption callback
     private Consumer<ExecutionProcessInterruptionEvent> interruptionCallback;
@@ -33,6 +43,7 @@ public class ExecutionProcessWithCallback {
     private AtomicReference<Thread> workingThread = new AtomicReference<>(null);
 
     private AtomicReference<Process> currentProcess = new AtomicReference<>(null);
+    private AtomicReference<PROCESS_STEP> currentStep = new AtomicReference<>(null);
 
     @Setter
     private String projectDirectory;
@@ -104,16 +115,18 @@ public class ExecutionProcessWithCallback {
 
 
                 // создаем jar
-                createFatJar();
+                executeStep(PROCESS_STEP.JAR_COMPILE, List.of("mvn.cmd", "package"), false);
 
                 // оповещаем о конце компиляции
                 messageCallback.accept(new ExecutionProcessMessageEvent(this, "Successful compilation", projectId,
                         projectDirectory));
 
                 // запускаем проект
-                runJar();
+                executeStep(PROCESS_STEP.JDK_SERVER_RUN, List.of("java", "-jar", "target/fatjar.jar"), true);
 
 
+
+                // успешное выполнение всех шагов
                 messageCallback.accept(new ExecutionProcessMessageEvent(this, "Execution completed", projectId,
                         projectDirectory));
             }
@@ -140,11 +153,55 @@ public class ExecutionProcessWithCallback {
 
     }
 
+    private void executeStep(PROCESS_STEP step, List<String> commandLine, boolean log) throws Exception{
+        checkInterruption();
+        ProcessBuilder processBuilder = new ProcessBuilder(commandLine);
+        processBuilder.redirectErrorStream(true);
+        processBuilder.directory(new File(projectDirectory));
+
+        Process process = processBuilder.start();
+
+        currentProcess.set(process);
+        currentStep.set(step);
+
+        try (final InputStream stdoutInputStream = process.getInputStream();
+             final BufferedReader stdoutReader =
+                     new BufferedReader(new InputStreamReader(stdoutInputStream))
+        ){
+            String out;
+            while (running.get() && (out = stdoutReader.readLine()) != null) {
+                if (log){
+                    messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
+                }
+
+
+            }
+        }
+        catch (Exception e){
+            throw new Exception(e.getMessage());
+        }
+
+        int exitCode = process.waitFor();
+        if (exitCode!=0){
+            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error", projectId, projectDirectory));
+            // меняем флаг, прерываем поток
+            stop();
+        }
+
+        // сбрасываем процесс - тут или следом по цепочке?
+        currentProcess.set(null);
+
+
+
+
+    }
+
+    /*
+
     // запускаем jar (временная реализация с прямым запуском jvm
     private void runJar() throws Exception{
 
         checkInterruption();
-
 
 
         ProcessBuilder jarProcessBuilder = new ProcessBuilder("java", "-jar", "target/fatjar.jar");
@@ -179,6 +236,8 @@ public class ExecutionProcessWithCallback {
         currentProcess.set(null);
 
     }
+
+
 
 
     // создаем исполняемый jar файл со всеми зависимостями
@@ -234,6 +293,8 @@ public class ExecutionProcessWithCallback {
 
 
     }
+
+     */
 
 
 
