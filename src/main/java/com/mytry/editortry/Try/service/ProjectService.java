@@ -17,6 +17,8 @@ import com.mytry.editortry.Try.repository.ProjectRepository;
 import com.mytry.editortry.Try.repository.UserRepository;
 import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.processes.ProjectLogger;
+import com.mytry.editortry.Try.utils.projects.ProjectConstructor;
+import com.mytry.editortry.Try.utils.projects.ProjectType;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -55,6 +57,9 @@ public class ProjectService {
 
     @Autowired
     private CacheSystem cacheSystem;
+
+    @Autowired
+    private ProjectConstructor projectConstructor;
 
 
 
@@ -304,6 +309,15 @@ public class ProjectService {
 
         // структура проекта - для демонстрации создаем типичную maven структуру
         arrangeMavenTraditionalStructure(root, dir.getAbsolutePath());
+
+        // тестовый функционал
+        try{
+            projectConstructor.buildProject(root, dir.getAbsolutePath(), ProjectType.MAVEN_CLASSIC);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
 
 
 

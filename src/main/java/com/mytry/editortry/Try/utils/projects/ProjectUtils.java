@@ -1,4 +1,4 @@
-package com.mytry.editortry.Try.utils;
+package com.mytry.editortry.Try.utils.projects;
 
 import com.mytry.editortry.Try.dto.projects.FileSearchInsideProjectResult;
 import com.mytry.editortry.Try.model.Directory;
@@ -8,7 +8,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.Transformer;
@@ -20,6 +19,17 @@ import java.util.*;
 public class ProjectUtils {
 
     public final static List<String> mavenFolderStructure = List.of("src", "main","java","com");
+
+
+
+
+
+
+
+    private ProjectUtils(){}
+
+
+
 
     public static Directory getMavenClassicalStructureRoot(Directory projectRoot){
         Directory current = projectRoot;

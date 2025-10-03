@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -23,7 +24,7 @@ public class Directory {
     private String name;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-    private List<Directory> children;
+    private List<Directory> children = new ArrayList<>();
 
     // в корневой папке нет родителя
     @ManyToOne(fetch = FetchType.LAZY)
@@ -31,7 +32,7 @@ public class Directory {
     private Directory parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-    private List<File> files;
+    private List<File> files = new ArrayList<>();
 
 
     @Column

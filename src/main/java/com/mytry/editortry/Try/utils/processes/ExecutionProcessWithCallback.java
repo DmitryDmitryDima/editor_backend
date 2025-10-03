@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 public class ExecutionProcessWithCallback {
 
     // JDK_SERVER_RUN - not for final dev
-    static enum PROCESS_STEP{
+    private enum PROCESS_STEP{
         JAR_COMPILE, JDK_SERVER_RUN,
         DOCKER_IMAGE_BUILD,
         DOCKER_CONTAINER_RUN,
@@ -196,105 +196,7 @@ public class ExecutionProcessWithCallback {
 
     }
 
-    /*
 
-    // запускаем jar (временная реализация с прямым запуском jvm
-    private void runJar() throws Exception{
-
-        checkInterruption();
-
-
-        ProcessBuilder jarProcessBuilder = new ProcessBuilder("java", "-jar", "target/fatjar.jar");
-        jarProcessBuilder.redirectErrorStream(true); // объединяем поток ошибок и поток стандартного лога
-        jarProcessBuilder.directory(new File(projectDirectory));
-
-        Process process = jarProcessBuilder.start();
-        currentProcess.set(process);
-
-        try (final InputStream stdoutInputStream = process.getInputStream();
-             final BufferedReader stdoutReader =
-                     new BufferedReader(new InputStreamReader(stdoutInputStream))
-        ){
-            String out;
-            while (running.get() && (out = stdoutReader.readLine()) != null) {
-
-                messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
-            }
-        }
-        catch (Exception e){
-            throw new Exception(e.getMessage());
-        }
-
-        int exitCode = process.waitFor();
-        if (exitCode!=0){
-            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error", projectId, projectDirectory));
-            // меняем флаг, прерываем поток
-            stop();
-        }
-
-        // сбрасываем процесс
-        currentProcess.set(null);
-
-    }
-
-
-
-
-    // создаем исполняемый jar файл со всеми зависимостями
-    private void createFatJar() throws Exception{
-
-        checkInterruption();
-
-
-
-
-
-
-        ProcessBuilder jarProcessBuilder = new ProcessBuilder("mvn.cmd", "package");
-        jarProcessBuilder.redirectErrorStream(true); // объединяем поток ошибок и поток стандартного лога
-        jarProcessBuilder.directory(new File(projectDirectory));
-        Process process = jarProcessBuilder.start();
-        currentProcess.set(process);
-
-
-        try (final InputStream stdoutInputStream = process.getInputStream();
-             final BufferedReader stdoutReader =
-                     new BufferedReader(new InputStreamReader(stdoutInputStream))
-        ){
-            String out;
-            while (running.get() && (out = stdoutReader.readLine()) != null) {
-
-                //messageCallback.accept(new ExecutionProcessMessageEvent(this, out, projectId, projectDirectory));
-            }
-        }
-        catch (Exception e){
-            throw new Exception(e.getMessage());
-        }
-
-        int exitCode = process.waitFor();
-        // процесс завершился с ошибкой - остановка всего
-        if (exitCode!=0){
-            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error", projectId, projectDirectory));
-            // меняем флаг, прерываем поток
-            stop();
-        }
-
-
-        // сбрасываем процесс
-        currentProcess.set(null);
-
-
-
-
-
-
-
-
-
-
-    }
-
-     */
 
 
 

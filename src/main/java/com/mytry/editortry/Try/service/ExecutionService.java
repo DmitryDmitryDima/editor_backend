@@ -9,7 +9,7 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
-import com.mytry.editortry.Try.utils.ProjectUtils;
+import com.mytry.editortry.Try.utils.projects.ProjectUtils;
 import com.mytry.editortry.Try.utils.processes.ExecutionProcessWithCallback;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessCreationEvent;
 import com.mytry.editortry.Try.utils.processes.events.ExecutionProcessErrorEvent;
