@@ -308,15 +308,13 @@ public class ProjectService {
 
 
         // структура проекта - для демонстрации создаем типичную maven структуру
-        arrangeMavenTraditionalStructure(root, dir.getAbsolutePath());
+        //arrangeMavenTraditionalStructure(root, dir.getAbsolutePath());
 
         // тестовый функционал
-        try{
-            projectConstructor.buildProject(root, dir.getAbsolutePath(), ProjectType.MAVEN_CLASSIC);
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+
+        projectConstructor.buildProject(root, dir.getAbsolutePath(), ProjectType.MAVEN_CLASSIC);
+
+
 
 
 
@@ -838,6 +836,10 @@ public class ProjectService {
                           ArrayList<DirectoryDTO> layer,
                           Map<String, FlatTreeMember> flatTree){
 
+        if (directory.isHidden()) return;
+
+
+
         dto.setName(directory.getName());
         dto.setId(directory.getId());
 
@@ -868,6 +870,8 @@ public class ProjectService {
         if (directory.getFiles()!=null){
             for (File file:directory.getFiles()){
                 // проверяем статус на случай, если какая-то операция над файлом "зависла"
+                // также проверяем на видимость
+                if (file.isHidden()) continue;
                 if (file.getStatus()== FileStatus.AVAILABLE){
                     String index = "file_"+file.getId();
                     FlatTreeMember fileMember = new FlatTreeMember();

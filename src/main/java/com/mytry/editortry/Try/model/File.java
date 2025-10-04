@@ -30,6 +30,8 @@ public class File {
 
 
 
+
+
     // статус файла
     @Enumerated(EnumType.STRING)
     private FileStatus status = FileStatus.AVAILABLE;
@@ -43,8 +45,12 @@ public class File {
     @Column
     private Instant updatedAt;
 
-    // допустим, если в шаблоне это pom.xml
+
+    // файл нельзя перемещать/удалять
     private boolean immutable;
+
+    // если true - полностью скрыт от пользователя
+    private boolean hidden;
 
 
 

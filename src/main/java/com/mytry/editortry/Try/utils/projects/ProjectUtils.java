@@ -50,6 +50,17 @@ public class ProjectUtils {
         return sb.toString();
     }
 
+    public static void injectChildToParent(Directory child, Directory parent){
+        parent.getChildren().add(child);
+        child.setParent(parent);
+    }
+    public static void injectChildToParent(File file, Directory parent){
+        parent.getFiles().add(file);
+        file.setParent(parent);
+    }
+
+
+
     // обход дисковой структуры с помощью deep first seacrh с формированием пути к файлу от root
     public static Optional<FileSearchInsideProjectResult> findFileInsideProjectWithTrace(Directory root, Long fileId){
 

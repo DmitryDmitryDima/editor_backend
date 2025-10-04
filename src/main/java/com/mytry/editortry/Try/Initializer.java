@@ -97,15 +97,17 @@ public class Initializer implements CommandLineRunner {
             for (java.io.File f:childrenFiles){
                 if (f.isDirectory()){
                     String name = f.getName();
-                    // таргет папка невидима (при создании проекта она не вносится в бд)
-                    if(name.equals("target")){
-                        continue;
-                    }
+
 
                     Directory child = new Directory();
                     // для удобства введем запрет на удаление папок с определенным именем
                     if (immutables.contains(name)){
                         child.setImmutable(true);
+                    }
+
+                    // таргет папка невидима
+                    if(name.equals("target")){
+                        child.setHidden(true);
                     }
                     child.setName(name);
                     child.setCreatedAt(Instant.now());
@@ -116,12 +118,15 @@ public class Initializer implements CommandLineRunner {
                 }
 
                 else {
-                    if (f.getName().equals("current.log")){
-                        continue; // лог невидим для пользователя в древе
-                    }
+
                     File file = new File();
                     String fullName = f.getName();
                     int lastIndex = fullName.lastIndexOf(".");
+
+                    // лог просто так не увидеть
+                    if (f.getName().equals("current.log")){
+                        file.setHidden(true);
+                    }
 
                     if (lastIndex>0){
                         file.setName(f.getName().substring(0,lastIndex));

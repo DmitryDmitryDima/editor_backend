@@ -1,9 +1,7 @@
 package com.mytry.editortry.Try.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -14,6 +12,7 @@ import java.util.List;
 @Getter
 @Setter
 @NoArgsConstructor
+
 public class Directory {
 
 
@@ -40,6 +39,9 @@ public class Directory {
 
     // иммутабельность директории - соблюдение сохранения шаблона
     private boolean immutable;
+
+    // полностью скрыт от пользователя
+    private boolean hidden;
 
 
 
