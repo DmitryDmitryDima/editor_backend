@@ -14,7 +14,10 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class ProjectUtils {
 
@@ -57,6 +60,25 @@ public class ProjectUtils {
     public static void injectChildToParent(File file, Directory parent){
         parent.getFiles().add(file);
         file.setParent(parent);
+    }
+
+    // пишем директории на диск и кешируем путь для child
+    public static void writeDirectoriesAndCachePath(Directory parent, Directory child) throws Exception{
+
+        Path childPath = Path.of(parent.getConstructedPath(), child.getName());
+        child.setConstructedPath(childPath.toString());
+
+        Files.createDirectories(childPath);
+    }
+
+    // пишем файл на диск, при необходимости вставляем шаблон
+    public static void writeFile(File file, Path filePath, Path templatePath) throws Exception {
+        Files.createFile(filePath);
+
+        if (templatePath!=null){
+            String templateContent = Files.readString(templatePath);
+            Files.writeString(filePath, templateContent);
+        }
     }
 
 
@@ -119,8 +141,31 @@ public class ProjectUtils {
         return Optional.empty();
     }
 
+    // вставляем artifact id в pom.xml
+    public static void setArtifactIdInsidePomXML(String pomPath, String artifactId) throws Exception{
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        Document document = factory
+                .newDocumentBuilder()
+                .parse(pomPath);
+
+        document.getDocumentElement().normalize();
+
+        NodeList nodes = document.getElementsByTagName("artifactId");
+
+
+
+        Node artifactidNode = nodes.item(0).getFirstChild();
+        artifactidNode.setNodeValue(artifactId);
+
+        Transformer transformer = TransformerFactory.newInstance().newTransformer();
+        Result output = new StreamResult(new java.io.File(pomPath));
+        Source input = new DOMSource(document);
+        transformer.transform(input, output);
+
+    }
+
     // редактируем pom.xml, вставляя имя главного класса
-    public static void setMainClassInsidePomXML(String pomPath, String filename) throws Exception {
+    public static void setMainClassInsidePomXML(String pomPath, String mainClassName) throws Exception {
         System.out.println(pomPath);
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         Document document = factory
@@ -135,7 +180,7 @@ public class ProjectUtils {
             throw new IllegalStateException("invalid xml structure");
         }
         Node mainClassNode = nodes.item(0).getFirstChild();
-        mainClassNode.setNodeValue(filename);
+        mainClassNode.setNodeValue(mainClassName);
 
         Transformer transformer = TransformerFactory.newInstance().newTransformer();
         Result output = new StreamResult(new java.io.File(pomPath));

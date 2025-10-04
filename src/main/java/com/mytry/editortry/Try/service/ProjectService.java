@@ -86,179 +86,15 @@ public class ProjectService {
 
 
 
-    // создаем структуру директорий, соответствующую типичной структуре maven проекта
-    // все файлы и директории шаблона - иммутабельные
-    // todo убрать дублирование кода после теста работоспособности
-    private void arrangeMavenTraditionalStructure(Directory root, String rootPath) throws Exception{
-
-
-        // pom.xml
-        if (root.getFiles()==null){
-            root.setFiles(new ArrayList<>());
-        }
-
-        File pom = new File();
-        pom.setImmutable(true);
-        pom.setName("pom");
-        pom.setExtension("xml");
-        pom.setCreatedAt(Instant.now());
-        pom.setUpdatedAt(Instant.now());
-        pom.setParent(root);
-        root.getFiles().add(pom);
 
 
 
-        // src
-        Directory src = new Directory();
-        src.setImmutable(true);
-        src.setName("src");
-        src.setCreatedAt(Instant.now());
 
-        if (root.getChildren()==null){
-            root.setChildren(new ArrayList<>());
-        }
-
-        root.getChildren().add(src);
-        src.setParent(root);
-
-        directoryRepository.save(src);
-
-        // main
-        Directory main = new Directory();
-        main.setImmutable(true);
-        main.setName("main");
-        main.setCreatedAt(Instant.now());
-
-        if (src.getChildren()==null){
-            src.setChildren(new ArrayList<>());
-        }
-
-        src.getChildren().add(main);
-        main.setParent(src);
-
-        directoryRepository.save(main);
-
-        // java
-        Directory java = new Directory();
-        java.setImmutable(true);
-        java.setName("java");
-        java.setCreatedAt(Instant.now());
-
-        if (main.getChildren() == null){
-            main.setChildren(new ArrayList<>());
-        }
-
-        main.getChildren().add(java);
-        java.setParent(main);
-
-        directoryRepository.save(java);
-
-
-        // com - корневой пакет (чтобы все пакеты были именованными)
-        Directory com = new Directory();
-        com.setImmutable(true);
-        com.setName("com");
-        com.setCreatedAt(Instant.now());
-        if (java.getChildren() == null){
-            java.setChildren(new ArrayList<>());
-        }
-        java.getChildren().add(com);
-        com.setParent(java);
-        directoryRepository.save(com);
-
-
-        // resources
-        Directory resources = new Directory();
-        resources.setImmutable(true);
-        resources.setName("resources");
-        resources.setCreatedAt(Instant.now());
-
-        if (main.getChildren() == null){
-            main.setChildren(new ArrayList<>());
-        }
-
-        main.getChildren().add(resources);
-        resources.setParent(main);
-
-        directoryRepository.save(resources);
-
-
-
-        // работаем с диском, создаем директории физически плюс папку target
-
-        Files.createDirectories(Path.of(rootPath+"/src/main/java/com"));
-        Files.createDirectories(Path.of(rootPath+"/src/main/resources"));
-        Files.createDirectories(Path.of(rootPath+"/target"));
-
-        // пишем файл pom.xml
-        Files.createFile(Path.of(rootPath+"/pom.xml"));
-
-        // загружаем стандартную структуру pom.xml для проекта maven с возможностью сборки fat jar
-        String minimalPom = Files.readString(Path.of(disk_location_common_system_directory, "standart_pom.txt")).formatted(
-                root.getName()+"-project"
-        );
-
-
-        /*
-        String minimalPom = """
-                <project>
-        <modelVersion>4.0.0</modelVersion>
-        <groupId>com.example</groupId>
-        <artifactId>%s</artifactId>
-        <version>1.0-SNAPSHOT</version>
-        <build>
-        <plugins>
-        <plugin>
-        <artifactId>maven-shade-plugin</artifactId>
-        <executions>
-        <execution>
-        <id>shade</id>
-        <goals>
-        <goal>shade</goal>
-        </goals>
-        <configuration>
-        <finalName>fatjar</finalName>
-        <transformers>
-        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-        <mainClass>Unknown</mainClass>
-        </transformer>
-        </transformers>
-        </configuration>
-        </execution>
-        </executions>
-        </plugin>
-        </plugins>
-        </build>
-        </project>
-                        """.formatted(root.getName()+"-project");
-
-
-         */
-
-
-
-        try (FileWriter writer = new FileWriter(rootPath+"/pom.xml")) {
-            writer.write(minimalPom);
-
-        } catch (IOException e) {
-            throw new IllegalArgumentException("pom.xml content creation fails");
-        }
-
-
-
-    }
-
-
-
-    // создание нового проекта с директорией
-    // данный вариант разработан в соответствии с шаблоном maven
-    // потенциально может быть несколько реализаций этого метода, в зависимости от шаблона проекта
+    // создание нового проекта с директорией (архитектура будет позволять посылать запрошенный тип проекта)
     @Transactional(rollbackOn = Exception.class)
     public void createProject(String username, String projectName) throws Exception {
 
-        /*
-        вариант кода без каскадирования
-         */
+
 
         Project project = new Project();
         project.setName(projectName);
@@ -307,21 +143,23 @@ public class ProjectService {
 
 
 
-        // структура проекта - для демонстрации создаем типичную maven структуру
-        //arrangeMavenTraditionalStructure(root, dir.getAbsolutePath());
-
-        // тестовый функционал
-
-        projectConstructor.buildProject(root, dir.getAbsolutePath(), ProjectType.MAVEN_CLASSIC);
 
 
 
 
+        try {
+            // кешируем путь к проекту
+            root.setConstructedPath(dir.getAbsolutePath());
+            projectConstructor.buildProject(root, ProjectType.MAVEN_CLASSIC);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            // подчищаем
+            Files.delete(dir.toPath()); // todo тут все рекурсивно
 
-
-
-
-
+            // выброс исключения откатывает все транзакции
+            throw new IllegalStateException("build failed "+e.getMessage());
+        }
 
     }
 

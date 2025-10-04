@@ -15,9 +15,7 @@ import org.yaml.snakeyaml.constructor.Constructor;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,7 +31,7 @@ public class ProjectConstructor {
     
     
     // вызывается из transactional контекста
-    public void buildProject(Directory root, String rootPath, ProjectType type) throws Exception{
+    public void buildProject(Directory root,ProjectType type) throws Exception{
         
         // загружаем файл инструкцию в зависимости от выбранного типа
         String fileInstruction = switch (type){
@@ -51,15 +49,23 @@ public class ProjectConstructor {
 
         }
         // выполняем инструкцию
-        runInstruction(yamlInstruction, root, rootPath);
+        runInstruction(yamlInstruction, root);
 
+        // выполняем подготовку для конкретного типа проекта - к примеру в maven форматируется pom.xml
 
-
-
-        // выполняем форматирование для конкретного типа проекта - к примеру в maven форматируется pom.xml
+        projectPreparation(type, root);
 
         
         
+    }
+
+    // в данном методе. в зависимости от типа, будет реализовываться дополнительная работа над созданной структурой
+    private void projectPreparation(ProjectType type, Directory root) throws Exception{
+        if (type == ProjectType.MAVEN_CLASSIC){
+            // в случае с maven необходимо отформатировать pom.xml
+            ProjectUtils.setArtifactIdInsidePomXML(root.getConstructedPath()+"/"+"pom.xml",
+                    root.getName()+"-project");
+        }
     }
 
     private YamlInstruction openYamlInstruction(InputStream stream){
@@ -72,48 +78,26 @@ public class ProjectConstructor {
     В базу теперь вносятся все сущности, в том числе и невидимые - фильтрация происходит на этапе серверного ответа
      */
 
-    private void runInstruction(@NotNull YamlInstruction instruction, Directory root, String rootPath) throws Exception{
+    private void runInstruction(@NotNull YamlInstruction instruction, Directory root) throws Exception{
 
-        System.out.println(instruction);
+
 
         // parent = null - значит верх иерархии, имеющий прямую зависимость с root. Иерархия строится с директорий
         List<DirectoryInstruction> directoryInstructions = instruction.getDirectories();
         HashMap<Long, Directory> directoriesBase = new HashMap<>();
-        List<Directory> rootLayer = new ArrayList<>(); // сохраняем root сущности для дальнейшего формирования файловых путей
-        HashMap<File, String> templateBase = new HashMap<>();
-
-        // извлекаем самый верхний уровень иерархии, связанный напрямую с root directory проекта
-        // помимо этого создаем зависимость от айди для сущностей базы данных и инструкции
-        List<Long> higherLayer = directoryInstructions
-                .stream()
-                .filter(directoryInstruction -> directoryInstruction.getParent() == null)
-                .peek(directoryInstruction -> {
-                    Directory directory = directoryInstruction.prepareDirectoryEntity();
-                    rootLayer.add(directory); // сохраняем самый верхний уровень отдельно
-                    ProjectUtils.injectChildToParent(directory, root);
-                    directoriesBase.put(directoryInstruction.getId(), directory);
-                })
-                .map(DirectoryInstruction::getId).toList();
 
 
 
+        directoriesBase.put(null, root);
 
-        // очищаем базу директорий от верхнего уровня
-        List<DirectoryInstruction> initialRemove = new ArrayList<>();
-        for (DirectoryInstruction di:directoryInstructions){
-            if (higherLayer.contains(di.getId())){
-                initialRemove.add(di);
-            }
-        }
-
-        directoryInstructions.removeAll(initialRemove);
-
+        Set<Long> higherLayer = new HashSet<>();
+        higherLayer.add(null);
 
         // опускаемся вглубь иерархии. Если инструкция содержит цикл - ловим это счетчиком
         int iteration = 0;
         while (!instruction.getDirectories().isEmpty()){
             // в этой коллекции собираем те директории, которые будут следующим верхним уровнем
-            List<Long> toRemove = new ArrayList<>();
+            Set<Long> toRemove = new HashSet<>();
 
             // ищем детей текущего верхнего уровня, вставляем зависимости
             for (DirectoryInstruction directoryInstruction:directoryInstructions){
@@ -131,10 +115,19 @@ public class ProjectConstructor {
 
                     Directory child = directoryInstruction.prepareDirectoryEntity();
 
+                    // создаем зависимость в базе
                     ProjectUtils.injectChildToParent(child, parent);
+
+                    // пишем директорию, при этом дополняя path для child
+                    ProjectUtils.writeDirectoriesAndCachePath(parent, child);
+
 
 
                     directoriesBase.put(directoryInstruction.getId(), child);
+
+
+
+
 
                 }
             }
@@ -156,28 +149,30 @@ public class ProjectConstructor {
         }
 
 
+
+
         // работаем с файлами
         List<FileInstruction> fileInstructions = instruction.getFiles();
         for (FileInstruction fileInstruction:fileInstructions){
-            Directory parent;
-            if (fileInstruction.getParent()==null){
-                parent = root;
-            }
-            else {
-                parent = directoriesBase.get(fileInstruction.getParent());
-                if (parent == null) {
-                    throw new IllegalStateException("instruction contains broken dependency between file and directory");
-                }
+            Directory parent = directoriesBase.get(fileInstruction.getParent());
+            if (parent == null) {
+                throw new IllegalStateException("instruction contains broken dependency between file and directory");
             }
 
+
+            // формируем зависимость в бд
             File file = fileInstruction.prepareFile();
 
             ProjectUtils.injectChildToParent(file, parent);
 
-            // сохраняем адрес шаблона для следующего шага
-            if (fileInstruction.getTemplate()!=null){
-                templateBase.put(file, fileInstruction.getTemplate());
-            }
+
+            // пишем файл, при необходимости выполняя загрузку шаблона
+            String template = fileInstruction.getTemplate();
+            Path templatePath = template==null?null:Path.of(disk_location_common_system_directory, template);
+
+            ProjectUtils.writeFile(file,
+                    Path.of(parent.getConstructedPath(), file.getName()+"."+file.getExtension()
+                    ), templatePath);
 
 
 
@@ -187,7 +182,21 @@ public class ProjectConstructor {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
     }
+
+
     
     
 }

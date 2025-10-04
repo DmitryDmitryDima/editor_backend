@@ -3,6 +3,7 @@ package com.mytry.editortry.Try.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,12 @@ public class Directory {
 
     // полностью скрыт от пользователя
     private boolean hidden;
+
+
+
+    // кешируем вычисленный путь (для алгоритма сборки проекта)
+    @Transient
+    private String constructedPath;
 
 
 
