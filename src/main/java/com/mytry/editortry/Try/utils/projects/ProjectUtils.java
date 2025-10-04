@@ -3,6 +3,7 @@ package com.mytry.editortry.Try.utils.projects;
 import com.mytry.editortry.Try.dto.projects.FileSearchInsideProjectResult;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
+import org.springframework.util.FileSystemUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -188,5 +189,9 @@ public class ProjectUtils {
         transformer.transform(input, output);
 
 
+    }
+
+    public static void removeDirectoryFromDisk(Path path) throws Exception{
+        FileSystemUtils.deleteRecursively(path);
     }
 }

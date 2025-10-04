@@ -19,6 +19,7 @@ import com.mytry.editortry.Try.utils.cache.CacheSystem;
 import com.mytry.editortry.Try.utils.processes.ProjectLogger;
 import com.mytry.editortry.Try.utils.projects.ProjectConstructor;
 import com.mytry.editortry.Try.utils.projects.ProjectType;
+import com.mytry.editortry.Try.utils.projects.ProjectUtils;
 import com.mytry.editortry.Try.utils.websocket.raw.WebSocketLogger;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -155,7 +156,7 @@ public class ProjectService {
         catch (Exception e){
             e.printStackTrace();
             // подчищаем
-            Files.delete(dir.toPath()); // todo тут все рекурсивно
+            ProjectUtils.removeDirectoryFromDisk(dir.toPath());
 
             // выброс исключения откатывает все транзакции
             throw new IllegalStateException("build failed "+e.getMessage());
@@ -351,9 +352,9 @@ public class ProjectService {
         // удаление директории с диска происходит также рекурсивно - мы должны сначала удалить вложения,
         // а потом их родителей. Просто так можно удалить только пустую папку
         try {
-            FileSystemUtils.deleteRecursively(Path.of(fullPath));
+            ProjectUtils.removeDirectoryFromDisk(Path.of(fullPath));
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
