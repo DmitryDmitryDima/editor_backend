@@ -39,7 +39,7 @@ public class UsersAPI {
     }
 
 
-
+    // todo передаем RequestBody со всеми параметрами
     @PostMapping("/createProject/{projectName}")
     public ResponseEntity<Void> createProject(@PathVariable("username") String username,
                                               @PathVariable("projectName") String projectName) throws Exception {

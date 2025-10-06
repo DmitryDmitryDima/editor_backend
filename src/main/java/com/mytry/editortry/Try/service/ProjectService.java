@@ -143,11 +143,6 @@ public class ProjectService {
         }
 
 
-
-
-
-
-
         try {
             // кешируем путь к проекту
             root.setConstructedPath(dir.getAbsolutePath());
