@@ -77,7 +77,7 @@ public class ExecutionService  {
         // формируем путь к pom.xml
         String username = project.getOwner().getUsername();
         String projectname = project.getName();
-        String pomPath = disk_location+username+"/projects/"+projectname+"/pom.xml";
+        String pomPath = disk_location+username+"/projects/java/"+projectname+"/pom.xml";
         // получив данные, редактируем pom.xml
         ProjectUtils.setMainClassInsidePomXML(pomPath, filePath);
 

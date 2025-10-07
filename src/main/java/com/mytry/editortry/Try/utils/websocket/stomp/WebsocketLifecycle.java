@@ -31,9 +31,9 @@ public class WebsocketLifecycle {
         System.out.println("subscribed with session id "+headerAccessor.getSessionId());
 
         // for project
-        if (destination!=null && destination.startsWith("/projects/")){
+        if (destination!=null && destination.startsWith("/projects/java/")){
 
-            String topic = destination.split("/projects/")[1];
+            String topic = destination.split("/projects/java/")[1];
             String[] topicDivided = topic.split("/");
 
             Long projectId = Long.valueOf(topicDivided[0]);

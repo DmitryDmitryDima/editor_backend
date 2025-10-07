@@ -184,7 +184,7 @@ public class ProjectService {
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
                 .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location_user_filebase +"/"+username+"/projects/java";
+        String fullPath = disk_location_user_filebase +"/"+username+"/projects/java/";
         Directory parent = null;
 
         if (parentIndex.equals("basic_root")){
