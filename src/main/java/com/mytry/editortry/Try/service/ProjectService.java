@@ -178,7 +178,7 @@ public class ProjectService {
      */
 
     @Transactional(rollbackOn = Exception.class)
-    public void createDirectory(String username, String projectName, String index, String suggestedDirectoryName){
+    public void createDirectory(String username, String projectName, String parentIndex, String suggestedDirectoryName){
 
 
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
@@ -187,7 +187,7 @@ public class ProjectService {
         String fullPath = disk_location_user_filebase +"/"+username+"/projects/";
         Directory parent = null;
 
-        if (index.equals("basic_root")){
+        if (parentIndex.equals("basic_root")){
             // работаем с корневой папкой проекта
             fullPath = fullPath+projectName+"/"+suggestedDirectoryName;
             parent = project.getRoot();
@@ -195,7 +195,8 @@ public class ProjectService {
 
         else {
 
-            Long id = Long.parseLong(index.split("_")[1]);
+            // формат индекса задается на бэкенде в методе отправки состояния проекта
+            Long id = Long.parseLong(parentIndex.split("_")[1]);
             // наша цель - сгенерировать путь до директории, в которой мы будем создавать новую директорию
             List<String> way = new ArrayList<>();
 

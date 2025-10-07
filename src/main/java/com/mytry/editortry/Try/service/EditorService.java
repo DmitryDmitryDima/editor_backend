@@ -534,10 +534,10 @@ public class EditorService {
             content = Files.readString(Path.of(file_path), StandardCharsets.UTF_8);
         }
         catch (IOException ioException){
-            throw new RuntimeException("fiel read error");
+            throw new RuntimeException("file read error: "+ioException);
         }
 
-        // формируем ответ
+        // формируем ответ вместе с необходимой инфой
         editorFileReadAnswer.setFile_id(file.getId());
         editorFileReadAnswer.setProject_id(project.getId());
         editorFileReadAnswer.setUpdatedAt(Instant.now());

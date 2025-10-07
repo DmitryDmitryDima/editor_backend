@@ -29,25 +29,26 @@ public class ProjectsAPI {
 
     }
 
-    @PostMapping("/createDirectory/{index}/{suggestion}")
+    //
+    @PostMapping("/createDirectory/{parent_index}/{suggestion}")
     public ResponseEntity<Void> createDirectory(@PathVariable(name = "projectname") String projectname,
                                                 @PathVariable(name = "username") String username,
-                                                @PathVariable("index") String index,
+                                                @PathVariable("parent_index") String parentIndex,
                                                 @PathVariable("suggestion") String suggestion){
 
-        projectService.createDirectory(username, projectname, index, suggestion);
+        projectService.createDirectory(username, projectname, parentIndex, suggestion);
 
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/createFile/{index}/{suggestion}")
+    @PostMapping("/createFile/{parent_index}/{suggestion}")
     public ResponseEntity<Void> createFile(
             @PathVariable(name = "projectname") String projectname,
             @PathVariable(name = "username") String username,
-            @PathVariable("index") String index,
+            @PathVariable("parent_index") String parentIndex,
             @PathVariable("suggestion") String suggestion) throws Exception {
 
-        projectService.createFile(username, projectname, index, suggestion);
+        projectService.createFile(username, projectname, parentIndex, suggestion);
         return ResponseEntity.noContent().build();
     }
 
