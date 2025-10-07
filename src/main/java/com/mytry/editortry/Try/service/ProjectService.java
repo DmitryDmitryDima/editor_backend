@@ -1,9 +1,7 @@
 package com.mytry.editortry.Try.service;
 
 
-import com.mytry.editortry.Try.dto.projects.DirectoryDTO;
-import com.mytry.editortry.Try.dto.projects.FlatTreeMember;
-import com.mytry.editortry.Try.dto.projects.ProjectDTO;
+import com.mytry.editortry.Try.dto.projects.*;
 import com.mytry.editortry.Try.exceptions.ProjectNotFoundException;
 import com.mytry.editortry.Try.model.Directory;
 
@@ -93,11 +91,12 @@ public class ProjectService {
 
     // создание нового проекта с директорией (архитектура будет позволять посылать запрошенный тип проекта)
     @Transactional(rollbackOn = Exception.class)
-    public void createProject(String username, String projectName) throws Exception {
+    public void createProject(String username, ProjectCreationRequest projectCreationRequest) throws Exception {
 
-
+        String projectName = projectCreationRequest.getProjectName();
 
         Project project = new Project();
+
         project.setName(projectName);
         project.setCreatedAt(Instant.now());
 
@@ -161,11 +160,8 @@ public class ProjectService {
 
     // todo удаление проекта реализуется через корзину, поэтому пока не трогаем этот пункт
     @Transactional
-    public void deleteProject(Long id){
-        if (!projectRepository.existsById(id)){
-            throw new EntityNotFoundException("no found");
-        }
-        projectRepository.deleteById(id);
+    public void deleteProject(ProjectDeletionRequest request){
+
     }
 
 

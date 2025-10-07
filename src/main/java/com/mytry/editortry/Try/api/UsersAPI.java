@@ -1,7 +1,9 @@
 package com.mytry.editortry.Try.api;
 
 
+import com.mytry.editortry.Try.dto.projects.ProjectCreationRequest;
 import com.mytry.editortry.Try.dto.projects.ProjectDTO;
+import com.mytry.editortry.Try.dto.projects.ProjectDeletionRequest;
 import com.mytry.editortry.Try.dto.users.UserDTO;
 import com.mytry.editortry.Try.model.User;
 import com.mytry.editortry.Try.service.ProjectService;
@@ -39,27 +41,24 @@ public class UsersAPI {
     }
 
 
-    // todo передаем RequestBody со всеми параметрами
-    @PostMapping("/createProject/java/{projectName}")
+
+    @PostMapping("/createProject/java")
     public ResponseEntity<Void> createProject(@PathVariable("username") String username,
-                                              @PathVariable("projectName") String projectName) throws Exception {
-        projectService.createProject(username, projectName);
+                                              @RequestBody ProjectCreationRequest projectCreationRequest) throws Exception {
+        projectService.createProject(username, projectCreationRequest);
         return ResponseEntity.noContent().build();
     }
 
 
 
 
-    @PostMapping("/deleteProject/java/{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id){
-        projectService.deleteProject(id);
+    @DeleteMapping("/deleteProject/java")
+    public ResponseEntity<Void> deleteProject(@RequestBody ProjectDeletionRequest projectDeletionRequest){
+        projectService.deleteProject(projectDeletionRequest);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/renameProject/java/{id}")
-    public void renameProject(@PathVariable("username") String username, @PathVariable("id") Long id){
 
-    }
 
 
 
