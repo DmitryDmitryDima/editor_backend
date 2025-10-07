@@ -40,7 +40,7 @@ public class UsersAPI {
 
 
     // todo передаем RequestBody со всеми параметрами
-    @PostMapping("/createProject/{projectName}")
+    @PostMapping("/createProject/java/{projectName}")
     public ResponseEntity<Void> createProject(@PathVariable("username") String username,
                                               @PathVariable("projectName") String projectName) throws Exception {
         projectService.createProject(username, projectName);
@@ -50,13 +50,13 @@ public class UsersAPI {
 
 
 
-    @PostMapping("/deleteProject/{id}")
+    @PostMapping("/deleteProject/java/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable("id") Long id){
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/renameProject/{id}")
+    @PostMapping("/renameProject/java/{id}")
     public void renameProject(@PathVariable("username") String username, @PathVariable("id") Long id){
 
     }

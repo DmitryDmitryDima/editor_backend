@@ -129,7 +129,7 @@ public class ProjectService {
 
 
         // сохранение директории на диске
-        java.io.File dir = new java.io.File(disk_location_user_filebase +username+"/projects/"+projectName);
+        java.io.File dir = new java.io.File(disk_location_user_filebase +username+"/projects/java/"+projectName);
         System.out.println(dir.getAbsolutePath());
         if (!dir.exists()){
             boolean result  = dir.mkdir();
@@ -184,7 +184,7 @@ public class ProjectService {
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
                 .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location_user_filebase +"/"+username+"/projects/";
+        String fullPath = disk_location_user_filebase +"/"+username+"/projects/java";
         Directory parent = null;
 
         if (parentIndex.equals("basic_root")){
@@ -314,7 +314,7 @@ public class ProjectService {
             parent = parent.getParent();
         }
         way.add("/");
-        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/java/");
         way.forEach(sb::append);
 
         String fullPath = disk_location_user_filebase +sb+directory.getName()+"/";
@@ -378,7 +378,7 @@ public class ProjectService {
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
                 .orElseThrow(ProjectNotFoundException::new);
 
-        String fullPath = disk_location_user_filebase +"/"+username+"/projects/";
+        String fullPath = disk_location_user_filebase +"/"+username+"/projects/java/";
         Directory parent = null;
 
         if (index.equals("basic_root")){
@@ -534,7 +534,7 @@ public class ProjectService {
 
         }
         way.add("/");
-        StringBuilder sb = new StringBuilder("/"+username+"/projects/");
+        StringBuilder sb = new StringBuilder("/"+username+"/projects/java/");
         way.forEach(sb::append);
 
         String fullPath = disk_location_user_filebase +sb+file.getName()+"."+file.getExtension();
@@ -651,7 +651,7 @@ public class ProjectService {
         projectDTO.setRunning(project.isRunning());
 
         try{
-            String folderPath = disk_location_user_filebase +project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
+            String folderPath = disk_location_user_filebase +project.getOwner().getUsername()+"/projects/java/"+project.getName()+"/";
             List<String> logLines = projectLogger.loadLogLines(project.getId(), folderPath);
             projectDTO.setProjectLogLines(logLines);
 

@@ -59,7 +59,7 @@ public class ProjectDatabaseLock {
         // блокируем
         project.setRunning(true);
 
-        return project.getOwner().getUsername()+"/projects/"+project.getName()+"/";
+        return project.getOwner().getUsername()+"/projects/java/"+project.getName()+"/";
 
     }
 

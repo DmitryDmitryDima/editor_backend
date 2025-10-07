@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/users/{username}/projects/{projectname}")
+@RequestMapping("/api/users/{username}/projects/java/{projectname}")
 public class ProjectsAPI {
 
     @Autowired

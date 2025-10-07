@@ -47,7 +47,7 @@ public class ProcessStateManager {
     public void processMessage(ExecutionProcessMessageEvent messageEvent){
         ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(messageEvent.getMessage(),
                 WebSocketEventType.PROCESS_MESSAGE);
-        notifier.convertAndSend("/projects/"+messageEvent.getProjectId(), websocketEvent);
+        notifier.convertAndSend("/projects/java/"+messageEvent.getProjectId(), websocketEvent);
 
         // логируем в файл
         projectLogger.addToLog(messageEvent.getMessage(), messageEvent.getProjectId(), messageEvent.getDirectory());
@@ -68,7 +68,7 @@ public class ProcessStateManager {
              ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("project terminated",
                      WebSocketEventType.PROCESS_END);
 
-             notifier.convertAndSend("/projects/"+interruptionEvent.getProjectId(), websocketEvent);
+             notifier.convertAndSend("/projects/java/"+interruptionEvent.getProjectId(), websocketEvent);
 
 
 
@@ -99,7 +99,7 @@ public class ProcessStateManager {
              catch (Exception e){
                  ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(e.getMessage(),
                          WebSocketEventType.PROCESS_STOP_ERROR);
-                 notifier.convertAndSend("/projects/"+interruptionEvent.getProjectId(), websocketEvent);
+                 notifier.convertAndSend("/projects/java/"+interruptionEvent.getProjectId(), websocketEvent);
                  return;
              }
 
@@ -132,7 +132,7 @@ public class ProcessStateManager {
         catch (Exception e){
             ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent(e.getMessage(),
                     WebSocketEventType.PROCESS_INIT_ERROR);
-            notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(),websocketEvent);
+            notifier.convertAndSend("/projects/java/"+preparedProcess.getProjectId(),websocketEvent);
 
             return;
         }
@@ -141,7 +141,7 @@ public class ProcessStateManager {
 
         ProcessWebsocketEvent websocketEvent = new ProcessWebsocketEvent("project execution initialization...",
                 WebSocketEventType.PROCESS_INIT);
-        notifier.convertAndSend("/projects/"+preparedProcess.getProjectId(), websocketEvent);
+        notifier.convertAndSend("/projects/java/"+preparedProcess.getProjectId(), websocketEvent);
 
         // подготавливаем процесс к запуску
         preparedProcess.setProjectDirectory(disk_address+path);

@@ -103,7 +103,7 @@ public class EditorService {
         }
 
         // путь к корневой папке проекта пользователя
-        String javaPath = disk_directory+ username+"/projects/"+projectname+"/src/main/java";
+        String javaPath = disk_directory+ username+"/projects/java/"+projectname+"/src/main/java";
         ProjectCacheDTO constructedCache = analyzeProject(currentDirectory, javaPath);
         projectCache.updateProjectCache(constructedCache);
         return constructedCache;
@@ -383,7 +383,7 @@ public class EditorService {
         );
 
         String username = project.getOwner().getUsername();
-        String disk_path = disk_directory+username+"/projects/"+project.getName()+"/"+request.getFull_path();
+        String disk_path = disk_directory+username+"/projects/java/"+project.getName()+"/"+request.getFull_path();
 
         // записываем информацию на диск
         try (FileWriter writer = new FileWriter(disk_path)) {
@@ -415,8 +415,8 @@ public class EditorService {
         realtimeEvent.setEvent_id(request.getEvent_id()); // пробрасываем ключ
 
         // информация отправляется на два направления - для подписчиков главной страницы проекта, а также файлов
-        notifier.convertAndSend("/projects/"+project.getId()+"/"+file.getId(), realtimeEvent );
-        notifier.convertAndSend("/projects/"+project.getId(), realtimeEvent);
+        notifier.convertAndSend("/projects/java/"+project.getId()+"/"+file.getId(), realtimeEvent );
+        notifier.convertAndSend("/projects/java/"+project.getId(), realtimeEvent);
 
 
         /*
@@ -525,7 +525,7 @@ public class EditorService {
         }
 
         // проверка пути завершена - загружаем содержимое файла из диска
-        String project_path = disk_directory+"/"+username+"/projects/"+projectname+"/";
+        String project_path = disk_directory+"/"+username+"/projects/java/"+projectname+"/";
         String file_path = project_path+fullPath;
 
         String content;

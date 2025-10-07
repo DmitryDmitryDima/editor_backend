@@ -50,7 +50,7 @@ public class Initializer implements CommandLineRunner {
 
         userRepository.save(user);
 
-        String projectsDirectory = disk_location+username+"/projects/";
+        String projectsDirectory = disk_location+username+"/projects/java/";
 
         java.io.File projectsFolder = new java.io.File(projectsDirectory);
 
