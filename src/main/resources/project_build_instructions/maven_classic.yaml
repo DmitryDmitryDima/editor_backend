@@ -1,0 +1,80 @@
+---
+directories:
+
+    - id: 0
+      name: src
+      immutable: true
+      hidden: false
+      parent: null
+
+
+    - id: 1
+      name: main
+      immutable: true
+      hidden: false
+      parent: 0
+
+    - id: 2
+      name: java
+      immutable: true
+      hidden: false
+      parent: 1
+
+
+    - id: 3
+      name: com
+      immutable: true
+      hidden: false
+      parent: 2
+
+    - id: 4
+      name: resources
+      immutable: true
+      hidden: false
+      parent: 1
+
+    - id: 5
+      name: target
+      immutable: true
+      hidden: true
+      parent: null
+
+files:
+
+    - name: pom
+      extension: xml
+      hidden: false
+      immutable: true
+      # template - файл имеет предзагружаемое содержимое
+      template: standart_pom.txt
+      parent: null
+
+    - name: current
+      extension: log	
+      hidden: true
+      immutable: true
+      template: null
+      parent: null
+
+    - name: Dockerfile
+      extension: null
+      hidden: true
+      immutable: true
+      template: Dockerfile.txt
+      parent: null
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

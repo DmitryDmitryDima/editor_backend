@@ -71,8 +71,7 @@ public class ProjectService {
     @Value("${files.directory}")
     private String disk_location_user_filebase;
 
-    @Value("${common.directory}")
-    private String disk_location_common_system_directory;
+
 
 
 
@@ -145,7 +144,8 @@ public class ProjectService {
         try {
             // кешируем путь к проекту
             root.setConstructedPath(dir.getAbsolutePath());
-            projectConstructor.buildProject(root, ProjectType.MAVEN_CLASSIC);
+            // выстраиваем содержимое проекта
+            projectConstructor.buildProject(project, projectCreationRequest);
         }
         catch (Exception e){
             e.printStackTrace();

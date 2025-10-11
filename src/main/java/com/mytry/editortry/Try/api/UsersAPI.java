@@ -45,6 +45,7 @@ public class UsersAPI {
     @PostMapping("/createProject/java")
     public ResponseEntity<Void> createProject(@PathVariable("username") String username,
                                               @RequestBody ProjectCreationRequest projectCreationRequest) throws Exception {
+
         projectService.createProject(username, projectCreationRequest);
         return ResponseEntity.noContent().build();
     }

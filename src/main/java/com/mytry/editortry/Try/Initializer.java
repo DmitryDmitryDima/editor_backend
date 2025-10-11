@@ -124,7 +124,7 @@ public class Initializer implements CommandLineRunner {
                     int lastIndex = fullName.lastIndexOf(".");
 
                     // лог просто так не увидеть
-                    if (f.getName().equals("current.log")){
+                    if (f.getName().equals("current.log") || f.getName().equals("Dockerfile") ){
                         file.setHidden(true);
                     }
 

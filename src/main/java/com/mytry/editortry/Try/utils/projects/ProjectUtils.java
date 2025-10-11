@@ -3,6 +3,10 @@ package com.mytry.editortry.Try.utils.projects;
 import com.mytry.editortry.Try.dto.projects.FileSearchInsideProjectResult;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
+import com.mytry.editortry.Try.model.Project;
+import com.mytry.editortry.Try.model.enums.FileStatus;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.util.FileSystemUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -15,8 +19,10 @@ import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -72,12 +78,58 @@ public class ProjectUtils {
         Files.createDirectories(childPath);
     }
 
+    // генерируем главный файл для мавен проекта
+    public static void generateEntryPointForMavenProject(Project project) throws Exception {
+        Directory com = getMavenClassicalStructureRoot(project.getRoot());
+
+        File main = new File();
+        main.setCreatedAt(Instant.now());
+        main.setUpdatedAt(Instant.now());
+        main.setName("Main");
+        main.setExtension("java");
+        main.setStatus(FileStatus.AVAILABLE);
+
+        main.setParent(com);
+        com.getFiles().add(main);
+        project.setEntryPoint(main);
+
+
+
+
+
+
+
+
+        String formattedTemplate = """
+                        %s
+                       \s
+                        public class %s{
+                          public static void main(String...args){
+                           \s
+                          }
+                       \s
+                        }
+                       \s"""
+                .formatted("package com;","Main");
+
+        Files.writeString(Path.of(com.getConstructedPath(), "Main.java"), formattedTemplate);
+
+        setMainClassInsidePomXML(project.getRoot().getConstructedPath()+"/pom.xml", "com.Main");
+
+
+
+
+    }
+
+
+
     // пишем файл на диск, при необходимости вставляем шаблон
-    public static void writeFile(File file, Path filePath, Path templatePath) throws Exception {
+    public static void writeFile(Path filePath, String templateName) throws Exception {
         Files.createFile(filePath);
 
-        if (templatePath!=null){
-            String templateContent = Files.readString(templatePath);
+        if (templateName!=null){
+            Resource loadedTemplateEntity = new ClassPathResource("/project_files_templates/"+templateName);
+            String templateContent =new String(loadedTemplateEntity.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             Files.writeString(filePath, templateContent);
         }
     }

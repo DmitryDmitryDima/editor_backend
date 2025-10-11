@@ -7,6 +7,8 @@ import com.mytry.editortry.Try.utils.parser.CodeAnalysisUtils;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -73,6 +75,10 @@ public class JavaStandartLibraryCache {
     // load serialized cache or generate new cache
     @PostConstruct
     public void initCache() throws Exception {
+
+
+
+
 
 
         String serPath = project_commons_path+"standart_cache.bat";
@@ -178,6 +184,10 @@ public class JavaStandartLibraryCache {
     private void serializeCache() throws Exception{
         String path = project_commons_path+"standart_cache.bat";
         System.out.println(path);
+
+
+
+
         try (ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(path))) {
 
             out.writeObject(cache);

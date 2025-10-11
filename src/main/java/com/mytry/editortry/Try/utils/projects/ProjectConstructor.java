@@ -1,12 +1,16 @@
 package com.mytry.editortry.Try.utils.projects;
 
+import com.mytry.editortry.Try.dto.projects.ProjectCreationRequest;
 import com.mytry.editortry.Try.model.Directory;
 import com.mytry.editortry.Try.model.File;
+import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.utils.projects.yaml.DirectoryInstruction;
 import com.mytry.editortry.Try.utils.projects.yaml.FileInstruction;
 import com.mytry.editortry.Try.utils.projects.yaml.YamlInstruction;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -21,51 +25,69 @@ import java.util.stream.Collectors;
 @Service
 public class ProjectConstructor {
 
+
     @Value("${files.directory}")
     private String disk_location_user_filebase;
 
-    @Value("${common.directory}")
-    private String disk_location_common_system_directory;
+
+
+
+
+
+
 
 
     
     
     // вызывается из transactional контекста
-    public void buildProject(Directory root,ProjectType type) throws Exception{
-        
+    public void buildProject(Project project, ProjectCreationRequest request) throws Exception{
+
+        Directory root = project.getRoot();
+
+        ProjectType type = ProjectType.MAVEN_CLASSIC; // временно задаем этот параметр вручную, в будущем ползователь будет слать инфу
+
+
+
+
         // загружаем файл инструкцию в зависимости от выбранного типа
         String fileInstruction = switch (type){
             case MAVEN_CLASSIC -> "maven_classic.yaml";
             case GRADLE_CLASSIC -> "gradle_classic.yaml";
         };
 
-        YamlInstruction yamlInstruction;
-        Path path = Path.of(disk_location_common_system_directory+"/instructions/"+fileInstruction);
 
-        // читаем инструкцию
-        try (InputStream inputStream = Files.newInputStream(path)) {
 
-            yamlInstruction = openYamlInstruction(inputStream);
 
-        }
+        Resource loadedInstructionEntity = new ClassPathResource("/project_build_instructions/"+fileInstruction);
+
+        // читаем инструкцию из внутренних ресурсов проекта
+        YamlInstruction yamlInstruction = openYamlInstruction(loadedInstructionEntity.getInputStream());
+
+
         // выполняем инструкцию
         runInstruction(yamlInstruction, root);
 
         // выполняем подготовку для конкретного типа проекта - к примеру в maven форматируется pom.xml
-
-        projectPreparation(type, root);
+        projectPreparation(type, project, request);
 
         
         
     }
 
     // в данном методе. в зависимости от типа, будет реализовываться дополнительная работа над созданной структурой
-    private void projectPreparation(ProjectType type, Directory root) throws Exception{
+    private void projectPreparation(ProjectType type, Project project, ProjectCreationRequest request) throws Exception{
         if (type == ProjectType.MAVEN_CLASSIC){
             // в случае с maven необходимо отформатировать pom.xml
-            ProjectUtils.setArtifactIdInsidePomXML(root.getConstructedPath()+"/"+"pom.xml",
-                    root.getName()+"-project");
+            ProjectUtils.setArtifactIdInsidePomXML(project.getRoot().getConstructedPath()+"/"+"pom.xml",
+                    project.getName()+"-project");
+
+            // остальные пользовательские параметры
+            if (request.getNeedEntryPoint()){
+                ProjectUtils.generateEntryPointForMavenProject(project);
+            }
         }
+
+
     }
 
     private YamlInstruction openYamlInstruction(InputStream stream){
@@ -166,13 +188,23 @@ public class ProjectConstructor {
             ProjectUtils.injectChildToParent(file, parent);
 
 
-            // пишем файл, при необходимости выполняя загрузку шаблона
-            String template = fileInstruction.getTemplate();
-            Path templatePath = template==null?null:Path.of(disk_location_common_system_directory, template);
 
-            ProjectUtils.writeFile(file,
-                    Path.of(parent.getConstructedPath(), file.getName()+"."+file.getExtension()
-                    ), templatePath);
+
+
+
+
+            // пишем файл, при необходимости выполняя загрузку шаблона
+            String fileName = file.getName();
+
+            if (file.getExtension()!=null){
+                fileName  =fileName+"."+file.getExtension();
+            }
+
+            ProjectUtils.writeFile(Path.of(parent.getConstructedPath(), fileName), fileInstruction.getTemplate());
+
+
+
+
 
 
 
