@@ -19,6 +19,7 @@ public class ExecutionProcessWithCallback {
 
     // JDK_SERVER_RUN - not for final dev
     private enum PROCESS_STEP{
+        CHECK_DOCKER,
         JAR_COMPILE, JDK_SERVER_RUN,
         DOCKER_IMAGE_BUILD,
         DOCKER_CONTAINER_RUN,
@@ -80,6 +81,7 @@ public class ExecutionProcessWithCallback {
     public void stop(){
         if (running.compareAndSet(true, false)){
 
+            // todo сценарий убийства зависит от шага
             // принудительно убиваем текущий внешний процесс
             Process process = currentProcess.get();
             if (process!=null){
@@ -114,6 +116,10 @@ public class ExecutionProcessWithCallback {
 
 
 
+
+
+
+
                 // создаем jar
                 executeStep(PROCESS_STEP.JAR_COMPILE, List.of("mvn.cmd", "package"), false);
 
@@ -121,8 +127,45 @@ public class ExecutionProcessWithCallback {
                 messageCallback.accept(new ExecutionProcessMessageEvent(this, "Successful compilation", projectId,
                         projectDirectory));
 
-                // запускаем проект
-                executeStep(PROCESS_STEP.JDK_SERVER_RUN, List.of("java", "-jar", "target/fatjar.jar"), true);
+
+                // проверяем наличие docker
+                boolean docker = dockerCheck();
+
+                if (docker){
+                    String imageName = "javaimage_"+projectId;
+                    String containerName = "javacontainer_"+projectId;
+                    messageCallback.accept(new ExecutionProcessMessageEvent(this, "-----Prepare virtual env", projectId,
+                            projectDirectory));
+
+                    executeStep(PROCESS_STEP.DOCKER_IMAGE_BUILD, List.of("docker", "build",".", "-t", imageName), false);
+
+                    messageCallback.accept(new ExecutionProcessMessageEvent(this, "-----Execute virtual env", projectId,
+                            projectDirectory));
+
+                    executeStep(PROCESS_STEP.DOCKER_CONTAINER_RUN, List.of("docker", "run", "--name", containerName, imageName), true);
+
+                    messageCallback.accept(new ExecutionProcessMessageEvent(this, "-----Destroy Venv", projectId,
+                            projectDirectory));
+
+                    // подчищаем
+
+                    executeStep(PROCESS_STEP.DOCKER_CONTAINER_REMOVE, List.of("docker", "rm", containerName), false);
+
+
+                    executeStep(PROCESS_STEP.DOCKER_IMAGE_REMOVE, List.of("docker", "rmi", imageName), false);
+
+
+
+
+
+                }
+
+                else {
+                    // запускаем проект без docker (dev only)
+                    executeStep(PROCESS_STEP.JDK_SERVER_RUN, List.of("java", "-jar", "target/fatjar.jar"), true);
+                }
+
+
 
 
 
@@ -152,6 +195,33 @@ public class ExecutionProcessWithCallback {
 
 
     }
+
+
+    // dev only method - при неисправности докера в продакшене сервер не запускается
+    private boolean dockerCheck() throws Exception {
+        List<String> commandLine = List.of("docker", "--version");
+        ProcessBuilder processBuilder = new ProcessBuilder(commandLine);
+        processBuilder.redirectErrorStream(true);
+
+        try{
+            Process process = processBuilder.start();
+
+            currentProcess.set(process);
+            currentStep.set(PROCESS_STEP.CHECK_DOCKER);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return false;
+        }
+        return true;
+
+
+
+
+
+
+    }
+
 
     private void executeStep(PROCESS_STEP step, List<String> commandLine, boolean log) throws Exception{
         checkInterruption();
