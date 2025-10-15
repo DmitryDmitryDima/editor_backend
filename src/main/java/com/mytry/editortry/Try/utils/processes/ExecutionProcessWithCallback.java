@@ -121,7 +121,7 @@ public class ExecutionProcessWithCallback {
 
 
                 // создаем jar
-                executeStep(PROCESS_STEP.JAR_COMPILE, List.of("mvn.cmd", "package"), false);
+                executeStep(PROCESS_STEP.JAR_COMPILE, List.of("mvn.cmd", "package"), true);
 
                 // оповещаем о конце компиляции
                 messageCallback.accept(new ExecutionProcessMessageEvent(this, "Successful compilation", projectId,
@@ -197,8 +197,10 @@ public class ExecutionProcessWithCallback {
     }
 
 
-    // dev only method - при неисправности докера в продакшене сервер не запускается
+    // todo - dev only method, оформляем это как полноценный процесс
     private boolean dockerCheck() throws Exception {
+        checkInterruption();
+
         List<String> commandLine = List.of("docker", "--version");
         ProcessBuilder processBuilder = new ProcessBuilder(commandLine);
         processBuilder.redirectErrorStream(true);
@@ -208,11 +210,19 @@ public class ExecutionProcessWithCallback {
 
             currentProcess.set(process);
             currentStep.set(PROCESS_STEP.CHECK_DOCKER);
+
+            // некоторые системы при отсутствии команды не выбрасывают исключения, а посылают код
+            int exitCode = process.waitFor();
+            if (exitCode!=0){
+                return false;
+            }
+
         }
         catch (Exception e){
-            e.printStackTrace();
             return false;
         }
+
+
         return true;
 
 
@@ -253,7 +263,7 @@ public class ExecutionProcessWithCallback {
 
         int exitCode = process.waitFor();
         if (exitCode!=0){
-            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error", projectId, projectDirectory));
+            messageCallback.accept(new ExecutionProcessMessageEvent(this, "fatal error ", projectId, projectDirectory));
             // меняем флаг, прерываем поток
             stop();
         }

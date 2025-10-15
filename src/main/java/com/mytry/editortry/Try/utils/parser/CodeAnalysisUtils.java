@@ -55,6 +55,17 @@ public class CodeAnalysisUtils {
             "interface",
             "public","abstract","sealed","final","class","non-sealed");
 
+    public final static List<String> availableKeywordsInsideClassBody = List.of(
+            "enum", "record", "transient", "int","interface", "public","private", "protected","abstract",
+            "static", "sealed", "short", "synchronized", "double", "final", "float","long","char", "class","void", "volatile",
+            "boolean", "byte","native", "non-sealed"
+
+    );
+
+
+
+
+
 
 
 

@@ -103,8 +103,10 @@ public class EditorService {
         }
 
         // путь к корневой папке проекта пользователя
-        String javaPath = disk_directory+ username+"/projects/java/"+projectname+"/src/main/java";
+        String javaPath = disk_directory+ username+"/projects/java/"+projectname+"/src/main/java/";
+
         ProjectCacheDTO constructedCache = analyzeProject(currentDirectory, javaPath);
+        System.out.println(constructedCache);
         projectCache.updateProjectCache(constructedCache);
         return constructedCache;
     }
@@ -258,7 +260,7 @@ public class EditorService {
             answer.setContextBasedInfo(context);
         }
         catch (Exception e){
-            throw new RuntimeException("invalid code context");
+            throw new RuntimeException("invalid code context "+e.getMessage() );
         }
 
         /*
@@ -836,6 +838,9 @@ public class EditorService {
         info.getFields().addAll(staticFields);
         info.getMethods().addAll(nonStaticMethods);
         info.getFields().addAll(nonStaticFields);
+        info.setKeywords(CodeAnalysisUtils.availableKeywordsInsideClassBody.stream()
+                .filter(el->el.startsWith(request.getText())).toList());
+
 
 
 

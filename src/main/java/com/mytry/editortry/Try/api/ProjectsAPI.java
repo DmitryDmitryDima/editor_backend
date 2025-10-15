@@ -1,6 +1,6 @@
 package com.mytry.editortry.Try.api;
 
-import com.mytry.editortry.Try.dto.projects.ProjectDTO;
+import com.mytry.editortry.Try.dto.projects.*;
 import com.mytry.editortry.Try.service.ProjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,52 +30,53 @@ public class ProjectsAPI {
     }
 
     //
-    @PostMapping("/createDirectory/{parent_index}/{suggestion}")
+    @PostMapping("/createDirectory")
     public ResponseEntity<Void> createDirectory(@PathVariable(name = "projectname") String projectname,
                                                 @PathVariable(name = "username") String username,
-                                                @PathVariable("parent_index") String parentIndex,
-                                                @PathVariable("suggestion") String suggestion){
+                                                @RequestBody DirectoryCreationRequest directoryCreationRequest)
+                                                {
 
-        projectService.createDirectory(username, projectname, parentIndex, suggestion);
+        projectService.createDirectory(username, projectname, directoryCreationRequest);
 
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/createFile/{parent_index}/{suggestion}")
+
+
+    @PostMapping("/createFile")
     public ResponseEntity<Void> createFile(
             @PathVariable(name = "projectname") String projectname,
             @PathVariable(name = "username") String username,
-            @PathVariable("parent_index") String parentIndex,
-            @PathVariable("suggestion") String suggestion) throws Exception {
+            @RequestBody FileCreationRequest fileCreationRequest) throws Exception {
 
-        projectService.createFile(username, projectname, parentIndex, suggestion);
+        projectService.createFile(username, projectname, fileCreationRequest);
         return ResponseEntity.noContent().build();
     }
 
 
     // мы не можем удалить корневую папку! поэтому извлечение id происходит по однозначному алгоритму
 
-    @PostMapping("/removeDirectory/{index}")
+    @PostMapping("/removeDirectory")
     public ResponseEntity<Void> removeDirectory(
             @PathVariable(name = "projectname") String projectName,
             @PathVariable(name = "username") String username,
-            @PathVariable("index") String index
-    ){
+            @RequestBody DirectoryRemovalRequest request
+            ){
 
-        projectService.deleteDirectory(username, projectName,index);
+        projectService.deleteDirectory(username, projectName,request);
 
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/removeFile/{index}")
+    @PostMapping("/removeFile")
     public ResponseEntity<Void> removeFile(
             @PathVariable(name = "projectname") String projectName,
             @PathVariable(name = "username") String username,
-            @PathVariable("index") String index
-    ) throws Exception {
+            @RequestBody FileRemovalRequest removalRequest
+            ) throws Exception {
 
 
-        projectService.deleteFile(username, projectName, index);
+        projectService.deleteFile(username, projectName, removalRequest);
 
         return ResponseEntity.noContent().build();
     }

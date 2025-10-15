@@ -17,7 +17,6 @@ public class JavaParserConfiguration {
 
 
     @Bean
-
     public ParserConfiguration prepareParserConfig(){
         // Конфигурация парсера
 
@@ -26,6 +25,7 @@ public class JavaParserConfiguration {
 
 
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(combinedTypeSolver);
+
 
         ParserConfiguration config = new ParserConfiguration();
 

@@ -174,7 +174,7 @@ public class ProjectService {
      */
 
     @Transactional(rollbackOn = Exception.class)
-    public void createDirectory(String username, String projectName, String parentIndex, String suggestedDirectoryName){
+    public void createDirectory(String username, String projectName, DirectoryCreationRequest request){
 
 
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName)
@@ -182,6 +182,8 @@ public class ProjectService {
 
         String fullPath = disk_location_user_filebase +"/"+username+"/projects/java/";
         Directory parent = null;
+        String parentIndex = request.getParentIndex();
+        String suggestedDirectoryName = request.getSuggestion();
 
         if (parentIndex.equals("basic_root")){
             // работаем с корневой папкой проекта
@@ -271,9 +273,9 @@ public class ProjectService {
 
      */
     @Transactional(rollbackOn = Exception.class)
-    public void deleteDirectory(String username, String projectName, String index)  {
+    public void deleteDirectory(String username, String projectName, DirectoryRemovalRequest request)  {
 
-
+        String index = request.getIndex();
         // проверяем, существует ли проект
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(
                 ()-> new IllegalArgumentException("project doesn't exists")
@@ -365,8 +367,9 @@ public class ProjectService {
 
      */
     @Transactional(rollbackOn = Exception.class)
-    public void createFile(String username, String projectName, String index, String suggestion) throws Exception {
-
+    public void createFile(String username, String projectName, FileCreationRequest request) throws Exception {
+        String suggestion = request.getSuggestion();
+        String index = request.getParentIndex();
         String props[] = suggestion.split("\\.");
         String filename = props[0];
         String extension = props[1];
@@ -494,7 +497,10 @@ public class ProjectService {
 
      */
     @Transactional(rollbackOn = Exception.class)
-    public void deleteFile(String username, String projectName, String index) throws Exception{
+    public void deleteFile(String username, String projectName, FileRemovalRequest removalRequest) throws Exception{
+
+        String index = removalRequest.getIndex();
+        System.out.println(index);
 
         // проверяем, существует ли проект
         Project project = projectRepository.findByOwnerUsernameAndName(username, projectName).orElseThrow(

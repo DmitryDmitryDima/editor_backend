@@ -53,7 +53,7 @@ public class UsersAPI {
 
 
 
-    @DeleteMapping("/deleteProject/java")
+    @PostMapping("/deleteProject/java")
     public ResponseEntity<Void> deleteProject(@RequestBody ProjectDeletionRequest projectDeletionRequest){
         projectService.deleteProject(projectDeletionRequest);
         return ResponseEntity.noContent().build();
