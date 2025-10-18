@@ -18,6 +18,7 @@ import com.mytry.editortry.Try.model.File;
 import com.mytry.editortry.Try.model.Project;
 import com.mytry.editortry.Try.repository.FileRepository;
 import com.mytry.editortry.Try.repository.ProjectRepository;
+import com.mytry.editortry.Try.utils.parser.DedicatedJavaParser;
 import com.mytry.editortry.Try.utils.projects.ProjectUtils;
 import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionInnerProjectFile;
 import com.mytry.editortry.Try.utils.cache.components.CacheSuggestionOuterProjectFile;
@@ -74,11 +75,7 @@ public class EditorService {
     @Autowired
     private SimpMessagingTemplate notifier;
 
-    /*
-    заранее конфигурированный java parser для анализа кода
-     */
-    @Autowired
-    private JavaParser parser;
+
 
 
 
@@ -172,6 +169,7 @@ public class EditorService {
                 if (vr.getNameAsString().equals(expression.toString())){
 
                     rootType = vr.getTypeAsString();
+
                 }
             }
 
@@ -184,6 +182,7 @@ public class EditorService {
             for (String importStatement:imports){
                 if (importStatement.endsWith("."+rootType)){
                     matchingImport = importStatement;
+
                 }
             }
             // соответствующий импорт отсутствует
@@ -194,6 +193,7 @@ public class EditorService {
             // формируем package путь для найденного импорта
             String way = matchingImport.substring(0, matchingImport.length()-rootType.length()-1);
 
+
             List<CacheSuggestionInnerProjectFile> files = projectCacheState.getPackageToFileAssociation().get(way);
 
 
@@ -202,8 +202,13 @@ public class EditorService {
                 // проверка на парсинг
                 if (file.isParsed() && file.getPublicType().getName().equals(rootType)){
 
+
+
                     answer.setMethods(file.getPublicType().getPublicMethods());
                     answer.setFields(file.getPublicType().getPublicFields());
+
+                    answer.getMethods().addAll(file.getPublicType().getPublicStaticMethods());
+                    answer.getFields().addAll(file.getPublicType().getPublicStaticFields());
                 }
                 // парсинг не проведен
                 else if (!file.isParsed()) {
@@ -216,6 +221,10 @@ public class EditorService {
                         file.setParsed(true);
                         answer.setMethods(file.getPublicType().getPublicMethods());
                         answer.setFields(file.getPublicType().getPublicFields());
+
+                        answer.getMethods().addAll(file.getPublicType().getPublicStaticMethods());
+                        answer.getFields().addAll(file.getPublicType().getPublicStaticFields());
+
 
                     }
                 }
@@ -850,7 +859,7 @@ public class EditorService {
 
     // создаем ast древо или выбрасываем ошибку
     private CompilationUnit compile(String code){
-        return parser.parse(code).getResult()
+        return DedicatedJavaParser.getInstance().parse(code).getResult()
                 .orElseThrow(()->new IllegalStateException("parsing error"));
     }
 

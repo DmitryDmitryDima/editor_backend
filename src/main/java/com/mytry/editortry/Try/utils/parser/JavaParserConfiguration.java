@@ -10,8 +10,17 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+
+// todo javaparser имеет проблемы в многопоточной среде, поэтому использовать один бин - сомнительная идея
+// в будущем разумнее будет посмотреть в сторону eclipse jdt, а также создать более продвинутые механизмы кеширования
 @Configuration
 public class JavaParserConfiguration {
+
+
+
+
+
+
 
 
 
