@@ -22,7 +22,7 @@ public class ProjectDTO {
 
 
 
-    private DirectoryDTO root;
+
 
     private Map<String, FlatTreeMember> flatTree;
 

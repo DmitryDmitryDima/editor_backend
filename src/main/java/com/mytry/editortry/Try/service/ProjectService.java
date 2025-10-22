@@ -635,19 +635,19 @@ public class ProjectService {
 
         Directory root = project.getRoot();
 
-        DirectoryDTO rootDTO = new DirectoryDTO();
+
 
         Map<String, FlatTreeMember> flatTree = new HashMap<>(); // плоская структура
 
 
-        traverse(root, rootDTO, null, flatTree);
+        traverse(root, flatTree, 0);
 
 
         ProjectDTO projectDTO = new ProjectDTO();
         projectDTO.setName(project.getName());
         projectDTO.setId(project.getId());
 
-        projectDTO.setRoot(rootDTO);
+
         projectDTO.setFlatTree(flatTree);
 
         projectDTO.setRunning(project.isRunning());
@@ -669,16 +669,16 @@ public class ProjectService {
 
     // проходим по директория deep-first-traversal, готовя dto
 
-    private void traverse(Directory directory, DirectoryDTO dto,
-                          ArrayList<DirectoryDTO> layer,
-                          Map<String, FlatTreeMember> flatTree){
+    private void traverse(Directory directory,
+                          Map<String, FlatTreeMember> flatTree, int depth){
+
+
 
         if (directory.isHidden()) return;
 
 
 
-        dto.setName(directory.getName());
-        dto.setId(directory.getId());
+
 
         FlatTreeMember directoryMember = new FlatTreeMember();
         directoryMember.setIndex("directory_"+directory.getId());
@@ -688,12 +688,9 @@ public class ProjectService {
 
 
 
-        if (layer!=null){
-            layer.add(dto);
 
-        }
 
-        if (layer==null){
+        if (depth == 0){
             // если корень
             directoryMember.setIndex("basic_root");
 
@@ -730,21 +727,19 @@ public class ProjectService {
         }
 
 
-        if (directory.getChildren().isEmpty()) {
-            dto.setChildren(new ArrayList<>());
-            //System.out.println("end reached");
-        }
+        if (!directory.getChildren().isEmpty()) {
 
-        else {
-            ArrayList<DirectoryDTO> children = new ArrayList<>();
-            dto.setChildren(children);
+
+
 
             for (Directory d:directory.getChildren()){
                 String index = "directory_"+d.getId();
-                traverse(d, new DirectoryDTO(), children, flatTree);
+                traverse(d, flatTree, depth+1);
                 directoryMember.getChildren().add(index);
             }
         }
+
+
 
         flatTree.put(directoryMember.getIndex(), directoryMember);
     }
